@@ -1,0 +1,124 @@
+with main; version=40;
+  type=mbs; autogravity=false; generation=direct; size=1;
+  bkgcolor=16777215; gridcolor=16448; axessaturation=1.E2;
+  gridstep=5.E-1; axelengthx=3.; axelengthy=3.; axelengthz=3.;
+  rotationstyle=z;
+  a={1 0 0 0 1 0 0 0 1};
+  target={0 0 0};
+  distance=5;
+  sensitivity_threshold=0.050;
+
+with const;
+  cnst=(l1, 0.5);
+  cnst=(l2, 1.5);
+  cnst=(exs, 0.2);
+  cnst=(rc, 0.02);
+
+with egravity; gravityz=-1.;
+
+with go;
+  name="Crank";
+  angle1=0; angle2=0; angle3=0;
+  with ge; type=CYLINDER;
+  VisibleSide=vsFront; material=4368053,4368053,0,0,10,1;
+  angle1=0; angle2=0; angle3=0; width=1;
+  h=l1; r1=rc; r2=rc; npc=20; npl=2;
+  with ge; type=ELLIPSOID;
+  VisibleSide=vsFront; material=16443621,16443621,0,0,10,1;
+  p1z=l1; angle1=0; angle2=0; angle3=0; width=1;
+  abc=rc*2,rc*2,rc*2; nm=20; nl=10;
+  with ge; type=ELLIPSOID;
+  VisibleSide=vsFront; material=16443621,16443621,0,0,10,1;
+  angle1=0; angle2=0; angle3=0; width=1;
+  abc=rc*2,rc*2,rc*2; nm=20; nl=10;
+
+with go;
+  name="Rod";
+  angle1=0; angle2=0; angle3=0;
+  with ge; type=CYLINDER;
+  VisibleSide=vsFront; material=7705041,7705041,0,0,10,1;
+  p1z=-l2/2; angle1=0; angle2=0; angle3=0; width=1;
+  h=l2; r1=rc; r2=rc; npc=20; npl=2;
+  with ge; type=ELLIPSOID;
+  VisibleSide=vsFront; material=16443621,16443621,0,0,10,1;
+  p1z=l2/2; angle1=0; angle2=0; angle3=0; width=1;
+  abc=rc*2,rc*2,rc*2; nm=20; nl=10;
+  with ge; type=ELLIPSOID;
+  VisibleSide=vsFront; material=16443621,16443621,0,0,10,1;
+  p1z=-l2/2; angle1=0; angle2=0; angle3=0; width=1;
+  abc=rc*2,rc*2,rc*2; nm=20; nl=10;
+
+with go;
+  name="Slider";
+  angle1=0; angle2=0; angle3=0;
+  with ge; type=BAR;
+  VisibleSide=vsFront; material=3913167,3913167,0,0,10,1;
+  angle1=0; angle2=0; angle3=0; width=1;
+  discret=1; box=0.1,0.1,0.1;
+
+with body1; name="Crank"; igrobj=1;
+  m=1; ixx=0.021; rcz=l1/2;
+    vectors={
+      '' '' '' '' '1' '0' '0'
+      '' '' 'l1' '' '1' '0' '0'
+    };
+
+with body2; name="Rod"; igrobj=2;
+  m=1; ixx=0.094;
+    vectors={
+      '' '' 'l2/2' '' '1' '0' '0'
+      '' '' '-l2/2' '' '1' '0' '0'
+    };
+
+with body3; name="Slider"; igrobj=3;
+  m=1;
+    vectors={
+      '' '' '' '' '0' '0' '1'
+    };
+
+with joint1; name="jGnd_Crank"; type=comm; bd1="Base0"; bd2="Crank";
+  with et; type=tc;
+  with et; type=rt; ex=1.; coord0=0.;
+  functiontype=light;
+  function=0,6.28318530717959,0,0,0,0;
+    with hidden_etv;jfrctype=linear;
+  f0=0; k=0; l0=0; d=0; q=0; w=0; a=0;
+  with et; type=rc; ex=1.;
+  with et; type=tc; ex=0; ey=0; ez=0;
+  with et; type=rc; ex=1.;
+  with et; type=tc; ex=0; ey=0; ez=0;
+
+with joint2; name="jCrank_Rod"; type=comm; bd1="Crank"; bd2="Rod";
+  with et; type=tc; ez=l1;
+  with et; type=rv; ex=1.; coord0=7.661; jfrctype=linear;
+  f0=0; k=0; l0=0; d=0; q=0; w=0; a=0;
+  with et; type=rc; ex=1.;
+  with et; type=tc; ex=0; ey=0; ez=0;
+  with et; type=rc; ex=1.;
+  with et; type=tc; ez=-(l2/2);
+
+with joint3; name="jRod_Slider"; type=comm; bd1="Rod"; bd2="Slider"; cut=true;
+  with et; type=tc; ez=-l2/2;
+  with et; type=rv; ex=1.; coord0=-7.661; jfrctype=linear;
+  f0=0; k=0; l0=0; d=0; q=0; w=0; a=0;
+  with et; type=rc; ex=1.;
+  with et; type=tc; ex=0; ey=0; ez=0;
+  with et; type=rc; ex=1.;
+  with et; type=tc; ex=0; ey=0; ez=0;
+
+with joint4; name="jGnd_Slider"; type=comm; bd1="Base0"; bd2="Slider";
+  with et; type=tc; ey=exs;
+  with et; type=tv; ez=1.; coord0=-9.8661E-1; jfrctype=linear;
+  f0=0; k=0; l0=0; d=0; q=0; w=0; a=0;
+  with et; type=rc; ez=1.;
+  with et; type=tc; ex=0; ey=0; ez=0;
+  with et; type=rc; ex=1.;
+  with et; type=tc; ex=0; ey=0; ez=0;
+
+with integr;
+  tout=1;
+  step=0.01;
+  h=0.0005;
+  error=1E-6;
+  coordinates={};
+  velocities={};

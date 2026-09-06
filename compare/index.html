@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Прикмех — было / стало</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #1e1e1e; color: #eee; margin: 0; padding: 24px; }
+  h1 { text-align: center; font-size: 22px; margin-bottom: 4px; }
+  p.sub { text-align: center; color: #999; margin-top: 0; margin-bottom: 36px; }
+  .row { margin-bottom: 56px; border-bottom: 1px solid #444; padding-bottom: 36px; }
+  .row h2 { font-size: 16px; color: #ddd; margin-bottom: 14px; }
+  .pair { display: flex; gap: 16px; flex-wrap: wrap; }
+  .col { flex: 1; min-width: 320px; background: #fff; border-radius: 8px; padding: 8px; }
+  .col img { width: 100%; display: block; border-radius: 4px; }
+  .label { text-align: center; font-weight: bold; padding: 6px 0; font-size: 14px; }
+  .label.old { color: #c0392b; }
+  .label.new { color: #1e8449; }
+  .nav { position: fixed; top: 16px; right: 16px; background: #2a2a2a; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
+  .nav a { color: #9cf; text-decoration: none; }
+</style>
+</head>
+<body>
+<h1>Прикмех — рисунки: было vs стало</h1>
+<p class="sub">Слева — версия до этой правки, справа — текущая (единичные орты базиса; в Рис.7-9 τ,n теперь из точки M, а не из O)</p>
+
+<div id="rows"></div>
+
+<script>
+const figs = [
+  "Рис.1. Плоское движение: траектория (эллипс 24×8)",
+  "Рис.2. ДСК: вектор скорости V=16π·j",
+  "Рис.3. ДСК: ускорение a=96π²·i+16π·j",
+  "Рис.4. ПСК: радиус-вектор r=24, θ=π",
+  "Рис.5. ПСК: компоненты скорости V_r=0, V_θ=−16π",
+  "Рис.6. ПСК: компоненты ускорения a_r=−96π², a_θ=−16π",
+  "Рис.7. ЕСПЗД: орты τ и n",
+  "Рис.8. ЕСПЗД: скорость по касательной V=16π",
+  "Рис.9. ЕСПЗД: a_τ=16π, a_n=96π²",
+  "Рис.10. Сложное движение: окрестность точки, V и a",
+  "Рис.11. Абсолютная скорость V=(0,−8π,12)",
+  "Рис.12. Абсолютное ускорение a=(88π²,16π,12)",
+  "Рис.13. Метод 2: V_e + V_r",
+  "Рис.14. Метод 2: a_r+a_e+a_кор",
+];
+const v = Date.now(); // cache-bust: картинки перезаписываются под теми же именами
+const rows = document.getElementById('rows');
+figs.forEach((title, idx) => {
+  const n = idx + 1;
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.id = 'fig' + n;
+  row.innerHTML = `
+    <h2>${title}</h2>
+    <div class="pair">
+      <div class="col"><div class="label old">было</div><img src="old/${n}.png?v=${v}"></div>
+      <div class="col"><div class="label new">стало</div><img src="new/${n}.png?v=${v}"></div>
+    </div>`;
+  rows.appendChild(row);
+});
+</script>
+</body>
+</html>
