@@ -1,0 +1,474 @@
+<title>Укупориватель 3D</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --bg:#12161c;
+    --panel:#1b212a;
+    --panel-border:#2a3341;
+    --text:#e7ebf0;
+    --text-muted:#8b96a5;
+    --accent:#d1953f;
+    --accent-hover:#e6ab57;
+    --accent-soft:rgba(209,149,63,.16);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    overflow:hidden;
+  }
+
+  #stage{position:fixed; inset:0;}
+  #stage canvas{display:block; touch-action:none;}
+
+  .hint{
+    position:fixed;
+    top:calc(18px + env(safe-area-inset-top,0px));
+    left:18px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    letter-spacing:.02em;
+    color:var(--text-muted);
+    background:rgba(18,22,28,.55);
+    border:1px solid var(--panel-border);
+    padding:6px 10px;
+    border-radius:6px;
+    backdrop-filter:blur(6px);
+    pointer-events:none;
+  }
+
+  .panel{
+    position:fixed;
+    left:18px;
+    bottom:calc(18px + env(safe-area-inset-bottom,0px));
+    width:284px;
+    max-width:calc(100vw - 36px);
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:12px;
+    padding:16px 16px 14px;
+    box-shadow:0 12px 32px rgba(0,0,0,.4);
+  }
+
+  .panel h1{
+    margin:0 0 2px;
+    font-size:15px;
+    font-weight:600;
+    letter-spacing:.01em;
+  }
+  .panel .sub{
+    margin:0 0 12px;
+    font-size:12px;
+    color:var(--text-muted);
+    line-height:1.5;
+  }
+
+  .read{
+    margin:0 0 12px;
+    padding:8px 10px;
+    border:1px solid var(--panel-border);
+    border-radius:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    line-height:1.6;
+    font-variant-numeric:tabular-nums;
+    color:var(--text);
+  }
+  .read span{color:var(--text-muted);}
+
+  .controls{display:grid; gap:8px;}
+
+  button.cut{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:10px 12px;
+    font-family:inherit;
+    font-size:13.5px;
+    font-weight:500;
+    color:var(--text);
+    background:transparent;
+    border:1.5px solid var(--accent);
+    border-radius:8px;
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease, transform .05s ease;
+  }
+  button.cut:hover{background:var(--accent-soft);}
+  button.cut:active{transform:scale(.98);}
+  button.cut:focus-visible{outline:2px solid var(--accent-hover); outline-offset:2px;}
+  button.cut[aria-pressed="true"]{
+    background:var(--accent);
+    color:#1b1204;
+    border-color:var(--accent);
+  }
+  button.cut svg{width:15px; height:15px; flex:none;}
+
+  .legend{
+    list-style:none;
+    margin:14px 0 0;
+    padding:12px 0 0;
+    border-top:1px solid var(--panel-border);
+    display:grid;
+    gap:7px;
+  }
+  .legend li{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    font-size:11.5px;
+    color:var(--text-muted);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .legend .swatch{
+    width:10px; height:10px; border-radius:2.5px; flex:none;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+  }
+
+  @media (max-width:520px){
+    .panel{width:auto; right:18px;}
+    .hint{display:none;}
+    .legend{display:none;}
+  }
+</style>
+
+<div id="stage"></div>
+<div class="hint">ЛКМ + перетаскивание — вращение · колесо — масштаб · ПКМ — сдвиг</div>
+
+<div class="panel">
+  <h1>Тангенсный укупориватель</h1>
+  <p class="sub">Размеры по расчёту v5: e = 12 мм, рукоять 500 мм, окно кулисы 59,3° → 19,3°, ход ползуна 16 мм (зазор 10 + обжим 6). Движение — по закону ω(t) из расчёта. Разрез — по плоскости ползуна.</p>
+  <div class="read" id="read" aria-live="off"></div>
+  <div class="controls">
+    <button class="cut" id="runBtn" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 4 L18 12 L6 20 Z"/>
+      </svg>
+      <span id="runLabel">Движение: выкл</span>
+    </button>
+    <button class="cut" id="cutBtn" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M4 4 L20 20 M20 4 L4 20"/>
+      </svg>
+      <span id="cutLabel">Разрез: выкл</span>
+    </button>
+    <button class="cut" id="viewBtn" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 L21 21"/>
+      </svg>
+      <span id="viewLabel">Узел крупно</span>
+    </button>
+  </div>
+  <ul class="legend">
+    <li><span class="swatch" style="background:#5b6472"></span>Стойка / основание / направляющие</li>
+    <li><span class="swatch" style="background:#232a33"></span>Кулиса с рукоятью</li>
+    <li><span class="swatch" style="background:#d1953f"></span>Камень (ролик) / ползун</li>
+    <li><span class="swatch" style="background:#8fd9b6"></span>Бутылка 0,33 л</li>
+    <li><span class="swatch" style="background:#2e333b"></span>Головка / кронен-крышка</li>
+  </ul>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+  // ---------- units: 1 = 100 мм ----------
+  var MM = 0.01;
+  var deg = function(d){ return d*Math.PI/180; };
+
+  // ---------- design values (расчёт v5) ----------
+  var E_   = 12*MM;          // расстояние от оси кулисы до оси ползуна
+  var L_   = 500*MM;         // рукоять (от оси кулисы до конца)
+  var PHI_N = deg(59.29);    // начало хода
+  var PHI_K = deg(19.29);    // конец хода
+  var S_   = 16*MM;          // ход ползуна
+  var S_OB = 6*MM;           // обжим
+
+  // ---------- scene ----------
+  var stage = document.getElementById('stage');
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x12161c);
+  scene.fog = new THREE.Fog(0x12161c, 20, 42);
+
+  var camera = new THREE.PerspectiveCamera(40, window.innerWidth/window.innerHeight, 0.02, 120);
+  var renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.localClippingEnabled = true;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  stage.appendChild(renderer.domElement);
+
+  var controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 0.4;
+  controls.maxDistance = 34;
+  controls.maxPolarAngle = Math.PI*0.49;
+
+  // ---------- lights ----------
+  scene.add(new THREE.HemisphereLight(0x8fa2c0, 0x14171c, 0.55));
+  var key = new THREE.DirectionalLight(0xfff2e0, 1.15);
+  key.position.set(6, 12, 8);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -4; key.shadow.camera.right = 7;
+  key.shadow.camera.top = 10; key.shadow.camera.bottom = -2;
+  key.shadow.camera.far = 40;
+  key.shadow.bias = -0.0012;
+  scene.add(key);
+  var rim = new THREE.DirectionalLight(0x6ea8ff, 0.35);
+  rim.position.set(-6, 4, -6);
+  scene.add(rim);
+
+  var ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.ShadowMaterial({opacity:0.35}));
+  ground.rotation.x = -Math.PI/2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+  var gridHelper = new THREE.GridHelper(20, 40, 0x2a3341, 0x1c222b);   // клетка 50 мм
+  gridHelper.position.y = 0.001;
+  scene.add(gridHelper);
+
+  // ---------- materials ----------
+  var matMetalCool = new THREE.MeshStandardMaterial({color:0x5b6472, metalness:0.55, roughness:0.42, side:THREE.DoubleSide});
+  var matMetalDark = new THREE.MeshStandardMaterial({color:0x232a33, metalness:0.6, roughness:0.35, side:THREE.DoubleSide});
+  var matAccent   = new THREE.MeshStandardMaterial({color:0xd1953f, metalness:0.5, roughness:0.32, side:THREE.DoubleSide});
+  var matGlass    = new THREE.MeshPhysicalMaterial({color:0x8fd9b6, metalness:0, roughness:0.05, transmission:0.55, opacity:0.85, transparent:true, thickness:0.4, side:THREE.DoubleSide});
+  var matCapDark  = new THREE.MeshStandardMaterial({color:0x2e333b, metalness:0.7, roughness:0.3, side:THREE.DoubleSide});
+  var matChannel  = new THREE.MeshStandardMaterial({color:0x161b21, metalness:0.4, roughness:0.55, side:THREE.DoubleSide});
+  var matGrip     = new THREE.MeshStandardMaterial({color:0x141820, metalness:0.1, roughness:0.85, side:THREE.DoubleSide});
+  var allMats = [matMetalCool, matMetalDark, matAccent, matGlass, matCapDark, matChannel, matGrip];
+
+  var model = new THREE.Group();
+  scene.add(model);
+
+  function addMesh(geo, mat, x,y,z, rx,ry,rz, parent){
+    var m = new THREE.Mesh(geo, mat);
+    m.position.set(x,y,z);
+    if(rx||ry||rz) m.rotation.set(rx||0, ry||0, rz||0);
+    m.castShadow = true; m.receiveShadow = true;
+    (parent || model).add(m);
+    return m;
+  }
+  function rodBetween(a, b, radius, mat, parent){
+    var d = new THREE.Vector3().subVectors(b,a);
+    var mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, d.length(), 16), mat);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.position.copy(new THREE.Vector3().addVectors(a,b).multiplyScalar(0.5));
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.clone().normalize());
+    (parent || model).add(mesh);
+    return mesh;
+  }
+  // stadium (capsule) outline spanning x0..x1 along X, width w
+  function capsule(x0, x1, w, Ctor){
+    var r = w/2, a = x0 + r, b = Math.max(x1 - r, a + 0.0005);
+    var p = new Ctor();
+    p.absarc(b, 0, r, -Math.PI/2, Math.PI/2, false);
+    p.absarc(a, 0, r,  Math.PI/2, Math.PI*1.5, false);
+    p.closePath();
+    return p;
+  }
+
+  // ---- planes along Z (front → back): ползун и бутылка (PZ) · кулиса (KZ) · стойка (PANEL_Z).
+  // При e = 12 мм ось кулисы стоит почти над ползуном, поэтому стойка уходит назад,
+  // а камень соединяет плоскость ползуна с плоскостью кулисы одной осью.
+  var PZ = 0, KZ = -0.22, PANEL_Z = -0.45, panelT = 0.12;
+
+  // ---------- base plate 200 × 160 мм ----------
+  var baseH = 0.20;
+  var baseX0 = -0.80, baseX1 = 1.20, baseZ0 = -0.60, baseZ1 = 1.00;
+  addMesh(new THREE.BoxGeometry(baseX1-baseX0, baseH, baseZ1-baseZ0), matMetalCool, (baseX0+baseX1)/2, baseH/2, (baseZ0+baseZ1)/2);
+  [[baseX0+0.12, baseZ0+0.12],[baseX1-0.12, baseZ0+0.12],[baseX0+0.12, baseZ1-0.12],[baseX1-0.12, baseZ1-0.12]].forEach(function(p){
+    addMesh(new THREE.CylinderGeometry(0.05,0.05,0.04,12), matMetalDark, p[0], baseH+0.02, p[1]);
+  });
+
+  // ---------- bottle Long Neck 0,33 л: Ø60,4 × 226,5 мм ----------
+  var BOTTLE_H = 2.265, prof = [
+    [0.000, 0.000],[0.240, 0.000],[0.290, 0.022],[0.302, 0.065],
+    [0.302, 1.240],[0.297, 1.330],[0.278, 1.415],[0.244, 1.485],
+    [0.203, 1.540],[0.166, 1.585],[0.141, 1.628],[0.130, 1.680],
+    [0.130, 2.115],[0.133, 2.128],[0.133, 2.180],[0.120, 2.195],
+    [0.087, 2.195],[0.087, 2.180]
+  ];
+  var ky = BOTTLE_H/2.195;
+  addMesh(new THREE.LatheGeometry(prof.map(function(p){ return new THREE.Vector2(p[0], p[1]*ky); }), 48), matGlass, 0, baseH, PZ);
+  var neckTop = baseH + BOTTLE_H;
+  var capH = 0.06;                                   // кронен-крышка: высота 6 мм, Ø32,1
+  addMesh(new THREE.CylinderGeometry(0.15, 0.1605, capH, 28), matCapDark, 0, neckTop + capH/2, PZ);
+  var capTop = neckTop + capH;
+
+  // ---------- kinematics ----------
+  // камень на оси ползуна x = 0, кулиса через ось O: y_камня = O.y + e·tg φ
+  var headH = 0.30;                                  // головка
+  var HK = headH + 0.80;                             // от низа головки до оси камня
+  var headBotEnd = capTop - S_OB;                    // в конце хода горловина надвинута на крышку на 6 мм
+  var ykEnd = headBotEnd + HK;
+  var O = new THREE.Vector3(-E_, ykEnd - E_*Math.tan(PHI_K), KZ);
+  function yKamen(phi){ return O.y + E_*Math.tan(phi); }
+  var yk0 = yKamen(PHI_N);                           // модель строится в начальном положении
+  var headBot0 = yk0 - HK, headTop0 = headBot0 + headH;
+
+  // ---------- stand (стойка) — behind both working planes ----------
+  var panelX0 = -0.62, panelX1 = 0.30, panelTop = O.y + 0.30;
+  addMesh(new THREE.BoxGeometry(panelX1-panelX0, panelTop-baseH, panelT), matMetalCool, (panelX0+panelX1)/2, baseH+(panelTop-baseH)/2, PANEL_Z);
+  addMesh(new THREE.BoxGeometry(panelX1-panelX0+0.14, 0.10, panelT+0.20), matMetalDark, (panelX0+panelX1)/2, baseH+0.05, PANEL_Z);
+
+  // pivot O: boss on the stand + pin out to the kulisa plane
+  var panelFront = PANEL_Z + panelT/2;
+  addMesh(new THREE.CylinderGeometry(0.07, 0.07, 0.05, 20), matMetalDark, O.x, O.y, panelFront + 0.025, Math.PI/2,0,0);
+  rodBetween(new THREE.Vector3(O.x, O.y, panelFront), new THREE.Vector3(O.x, O.y, KZ + 0.05), 0.028, matMetalDark);
+  addMesh(new THREE.CylinderGeometry(0.045, 0.045, 0.015, 16), matMetalDark, O.x, O.y, KZ + 0.04, Math.PI/2,0,0);
+
+  // ---------- link 1: кулиса + рукоять (rotates about O) ----------
+  var link1 = new THREE.Group();
+  link1.position.copy(O);
+  model.add(link1);
+  var plateT = 0.06, plateW = 0.16;
+  var rollerR = 0.045;                               // ролик камня Ø9 мм
+  var lMin = E_/Math.cos(PHI_K), lMax = E_/Math.cos(PHI_N);   // 12,7 … 23,5 мм
+  (function(){
+    var shape = capsule(-0.08, 0.36, plateW, THREE.Shape);
+    var pin = new THREE.Path(); pin.absarc(0, 0, 0.03, 0, Math.PI*2, false);
+    shape.holes.push(pin);
+    shape.holes.push(capsule(lMin - rollerR - 0.012, lMax + rollerR + 0.012, 2*rollerR + 0.006, THREE.Path));
+    var geo = new THREE.ExtrudeGeometry(shape, {depth: plateT, bevelEnabled:false, curveSegments:28});
+    geo.translate(0, 0, -plateT/2);
+    var m = new THREE.Mesh(geo, matMetalDark); m.castShadow = true; m.receiveShadow = true;
+    link1.add(m);
+  })();
+  rodBetween(new THREE.Vector3(0.30,0,0), new THREE.Vector3(L_ - 0.95, 0, 0), 0.06, matMetalDark, link1);
+  rodBetween(new THREE.Vector3(L_ - 0.95,0,0), new THREE.Vector3(L_ - 0.02, 0, 0), 0.11, matGrip, link1);
+  addMesh(new THREE.SphereGeometry(0.12, 20, 16), matGrip, L_ - 0.02, 0, 0, 0,0,0, link1);
+
+  // ---------- link 3: ползун with head and kamen ----------
+  var link3 = new THREE.Group();
+  model.add(link3);
+  var barX = 0.14, barZ = 0.12, barTop = yk0 + 0.10;
+  addMesh(new THREE.BoxGeometry(barX, barTop - headTop0, barZ), matMetalDark, 0, (barTop + headTop0)/2, PZ, 0,0,0, link3);
+  // capping head: cup with a throat that swallows the crown cap
+  var headProf = [[0,0.08],[0.165,0.08],[0.165,0],[0.20,0],[0.21,0.05],[0.21,0.24],[0.15,headH],[0,headH]];
+  addMesh(new THREE.LatheGeometry(headProf.map(function(p){ return new THREE.Vector2(p[0], p[1]); }), 36), matCapDark, 0, headBot0, PZ, 0,0,0, link3);
+  // kamen: axle from the bar back into the kulisa plane, roller turning in the slot
+  var axleZ0 = PZ - barZ/2, axleZ1 = KZ - plateT/2 - 0.03;
+  rodBetween(new THREE.Vector3(0, yk0, axleZ0), new THREE.Vector3(0, yk0, axleZ1), 0.02, matMetalDark, link3);
+  addMesh(new THREE.CylinderGeometry(rollerR, rollerR, plateT + 0.01, 24), matAccent, 0, yk0, KZ, Math.PI/2,0,0, link3);
+  addMesh(new THREE.CylinderGeometry(0.06, 0.06, 0.012, 18), matMetalDark, 0, yk0, KZ - plateT/2 - 0.012, Math.PI/2,0,0, link3);
+  addMesh(new THREE.BoxGeometry(barX + 0.06, 0.08, barZ + 0.06), matAccent, 0, yk0, PZ, 0,0,0, link3);   // бобышка оси камня
+
+  // ---------- guides (направляющие) tied back to the stand ----------
+  var brH = 0.14, brW = 0.36, brD = 0.24, clr = 0.008;
+  var openX = barX + 2*clr, openZ = barZ + 2*clr;
+  function bracket(y){
+    var sideX = (brW - openX)/2, sideZ = (brD - openZ)/2;
+    addMesh(new THREE.BoxGeometry(sideX, brH, brD), matMetalCool, -(openX+sideX)/2, y, PZ);
+    addMesh(new THREE.BoxGeometry(sideX, brH, brD), matMetalCool,  (openX+sideX)/2, y, PZ);
+    addMesh(new THREE.BoxGeometry(openX, brH, sideZ), matMetalCool, 0, y, PZ + (openZ+sideZ)/2);
+    addMesh(new THREE.BoxGeometry(openX, brH, sideZ), matMetalCool, 0, y, PZ - (openZ+sideZ)/2);
+    var t = 0.006;
+    addMesh(new THREE.BoxGeometry(t, brH+0.002, openZ), matChannel, -openX/2+t/2, y, PZ);
+    addMesh(new THREE.BoxGeometry(t, brH+0.002, openZ), matChannel,  openX/2-t/2, y, PZ);
+    // stub back to the stand, passing below the kulisa
+    addMesh(new THREE.BoxGeometry(0.08, 0.06, panelFront - (PZ - brD/2)), matMetalCool, 0, y - brH/2 + 0.03, (panelFront + PZ - brD/2)/2);
+  }
+  var yLow = headTop0 + 0.04 + brH/2;              // выше головки в начале хода
+  var yUp  = ykEnd - 0.10 - brH/2;                 // ниже оси камня в конце хода
+  bracket(yLow);
+  bracket(yUp);
+
+  // ---------- motion law (расчёт v5): разгон → упругая деформация → пластическая ----------
+  var W = 1.40, TR = 0.4718, TU = 0.0038, TT = 0.5179, TD = TR + TU + TT;
+  var ER = W/TR, ET = -W/TT;
+  function qDown(t){
+    if(t <= 0) return 0;
+    if(t < TR) return 0.5*ER*t*t;
+    var q1 = 0.5*ER*TR*TR;
+    if(t < TR + TU) return q1 + W*(t - TR);
+    var q2 = q1 + W*TU, tt = Math.min(t - TR - TU, TT);
+    return q2 + W*tt + 0.5*ET*tt*tt;
+  }
+  var PSI = PHI_N - PHI_K;
+  var DWELL = 0.5, TUP = 1.0, PAUSE = 0.8, PERIOD = TD + DWELL + TUP + PAUSE;
+  function phiAt(t){
+    var s = t % PERIOD;
+    if(s < TD) return PHI_N - Math.min(qDown(s), PSI);
+    if(s < TD + DWELL) return PHI_K;
+    if(s < TD + DWELL + TUP){ var u = (s - TD - DWELL)/TUP; u = u*u*(3-2*u); return PHI_K + PSI*u; }
+    return PHI_N;
+  }
+
+  var readEl = document.getElementById('read');
+  function setPhi(phi){
+    link1.rotation.z = phi;
+    link3.position.y = yKamen(phi) - yk0;
+    var travel = (yk0 - yKamen(phi))/MM;           // мм от начала хода
+    var phase = travel < 10 - 1e-6 ? 'холостой ход' : (travel < 10 + 0.109 ? 'упругая деформация' : 'обжим (пластическая)');
+    readEl.innerHTML = '<span>φ</span> ' + (phi*180/Math.PI).toFixed(1).replace('.', ',') + '°  ' +
+                       '<span>ход</span> ' + travel.toFixed(1).replace('.', ',') + ' мм<br><span>' + phase + '</span>';
+  }
+  setPhi(PHI_N);
+
+  // ---------- cutaway through the slider plane ----------
+  var clipPlane = new THREE.Plane(new THREE.Vector3(0,0,1), -PZ);
+  var cutOn = false;
+  function applyCut(state){
+    cutOn = state;
+    allMats.forEach(function(m){ m.clippingPlanes = state ? [clipPlane] : []; m.clipShadows = true; m.needsUpdate = true; });
+    document.getElementById('cutBtn').setAttribute('aria-pressed', state ? 'true':'false');
+    document.getElementById('cutLabel').textContent = 'Разрез: ' + (state ? 'вкл' : 'выкл');
+  }
+  document.getElementById('cutBtn').addEventListener('click', function(){ applyCut(!cutOn); });
+
+  // ---------- views ----------
+  var VIEW_ALL  = {pos: new THREE.Vector3(7.5, 6.2, 11.5), tgt: new THREE.Vector3(1.5, 3.4, 0)};
+  var VIEW_NODE = {pos: new THREE.Vector3(O.x + 0.85, O.y + 0.25, 1.15), tgt: new THREE.Vector3(-0.03, O.y + 0.06, -0.08)};
+  camera.position.copy(VIEW_ALL.pos); controls.target.copy(VIEW_ALL.tgt); controls.update();
+  var fly = null, nodeView = false;
+  function flyTo(v){ fly = {t:0, p0:camera.position.clone(), t0:controls.target.clone(), p1:v.pos, t1:v.tgt}; }
+  document.getElementById('viewBtn').addEventListener('click', function(){
+    nodeView = !nodeView;
+    flyTo(nodeView ? VIEW_NODE : VIEW_ALL);
+    this.setAttribute('aria-pressed', nodeView ? 'true' : 'false');
+    document.getElementById('viewLabel').textContent = nodeView ? 'Общий вид' : 'Узел крупно';
+  });
+
+  // ---------- motion toggle ----------
+  var animOn = false, animT = 0, lastT = performance.now();
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function setAnim(state){
+    animOn = state;
+    if(!state){ animT = 0; setPhi(PHI_N); }
+    document.getElementById('runBtn').setAttribute('aria-pressed', state ? 'true':'false');
+    document.getElementById('runLabel').textContent = 'Движение: ' + (state ? 'вкл' : 'выкл');
+  }
+  document.getElementById('runBtn').addEventListener('click', function(){ setAnim(!animOn); });
+
+  window.addEventListener('resize', function(){
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  function animate(now){
+    requestAnimationFrame(animate);
+    var dt = Math.min((now - lastT)/1000, 0.05); lastT = now;
+    if(animOn){ animT += dt * (reduceMotion ? 0.5 : 1); setPhi(phiAt(animT)); }
+    if(fly){
+      fly.t = Math.min(fly.t + dt/0.7, 1);
+      var u = fly.t*fly.t*(3 - 2*fly.t);
+      camera.position.lerpVectors(fly.p0, fly.p1, u);
+      controls.target.lerpVectors(fly.t0, fly.t1, u);
+      if(fly.t >= 1) fly = null;
+    }
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(animate);
+})();
+</script>
