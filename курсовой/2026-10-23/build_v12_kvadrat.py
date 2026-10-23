@@ -146,6 +146,21 @@ def set_cell(tc, txt, head=False):
         p.append(r)
 
 
+
+def replace_fig(caption_prefix, png):
+    from PIL import Image as _I
+    cap = find_p(caption_prefix); pic_p = cap.getprevious()
+    blip = next(pic_p.iter("{http://schemas.openxmlformats.org/drawingml/2006/main}blip"))
+    part = doc.part.related_parts[blip.get(qn("r:embed"))]; part._blob = open(png, "rb").read()
+    w, h = _I.open(png).size
+    ext = next(pic_p.iter("{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}extent"))
+    cx = int(ext.get("cx")); cy = int(round(cx * h / w)); ext.set("cy", str(cy))
+    for a_ext in pic_p.iter("{http://schemas.openxmlformats.org/drawingml/2006/main}ext"):
+        if a_ext.get("cx"): a_ext.set("cx", str(cx)); a_ext.set("cy", str(cy))
+
+
+replace_fig("Рисунок 1 —", FIG("fig1_scheme_square.png"))
+
 # ================================================================ данные расчёта
 R = json.load(open(os.path.join(SP, "strength_v11.json"), encoding="utf-8"))
 f = lambda x, d=1: f"{x:.{d}f}".replace(".", ",").replace("-", "−")
