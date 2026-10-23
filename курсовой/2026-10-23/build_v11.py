@@ -13,7 +13,7 @@ from docx.oxml.ns import nsdecls, qn
 
 SP = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(SP, "..", "2026-10-11", "Расчет_силовой_и_кинематический_тангенсный_механизм_v10.docx")
-DST = os.path.join(SP, "Расчет_силовой_и_кинематический_тангенсный_механизм_v11.docx")
+DST = os.path.join(SP, "Расчет_силовой_и_кинематический_тангенсный_механизм_v11_квадратный_камень.docx")
 FIG = lambda n: os.path.join(SP, n)
 
 doc = Document(SRC)
