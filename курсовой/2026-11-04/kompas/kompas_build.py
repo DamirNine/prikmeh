@@ -204,10 +204,16 @@ def build():
         d2.ksArcByPoint(L - R_, 0, R_, L - R_, -R_, L - R_, R_, 1, 1)
         d2.ksLineSeg(L - R_, R_, 0, R_, 1)
         d2.ksArcByPoint(0, 0, R_, 0, R_, 0, -R_, 1, 1)
+    def grip(d2):                                                     # рукоять Ø26 × 95 на конце полосы, заподлицо с концом K
+        pts = [(L - 95, 0), (L, 0), (L, 13), (L - 95, 13)]
+        for (x1, y1), (x2, y2) in zip(pts, pts[1:] + pts[:1]):
+            d2.ksLineSeg(x1, y1, x2, y2, 1)
+        d2.ksLineSeg(L - 105, 0, L + 5, 0, 3)                         # ось вращения — ось полосы
     p = Part("Кулиса с рукоятью", "УКП.01.001", ST3, "#2d3540")
     p.extrude(p.sketch(0, strip), 8.0)
     p.cyl(0, 0, 8.0, -12.0, 0, r_in=5.0)
     p.hole(0, 0, 5.0)
+    p.revolve(p.sketch(4.0, grip))                                    # в средней плоскости полосы
     mass["kulisa"] = p.save(FILES["kulisa"])[1]
 
     p = Part("Камень с пальцем D", "УКП.02.001", ST45, "#e8c99a")   # обойма 20 мм, стенки 4, губки, палец Ø10 × 17
