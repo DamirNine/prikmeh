@@ -7,7 +7,7 @@
   кулиса — отверстием на оси O, ступица в 0,5 мм от стойки; угол кулисы — в диапазоне φк…φн (22,72…59,47°);
   ручка — на конце кулисы; камень — средней плоскостью по оси кулисы (скользит вдоль неё);
   ползун — задней гранью по планкам направляющей, средней плоскостью по оси направляющей; палец D — соосно отверстию ползуна,
-  камень в 1 мм от ползуна (палец удерживается в ползуне стопорным кольцом).
+  торец пальца заподлицо с передней гранью ползуна (обойма — в 1 мм за ползуном, палец держит стопорное кольцо).
 Детали предварительно ставятся в положение φу; грани для сопряжений находятся по точкам, заданным в координатах детали
 (пересчёт в сборку — по текущему положению детали). Проверка до сохранения: угол задаётся сопряжением (диапазон на время
 выключен) — y ползуна = e·tg φ. Диапазон угла КОМПАС соблюдает при перемещении деталей мышью; через API он не принуждается
@@ -112,10 +112,24 @@ mate("камень по оси кулисы", COIN, plane("kamen", XZ), plane("k
 mate("ползун по планкам направляющей", COIN, face("polzun", 0, 15, -8), face("guide", 15.5, 50, 26), align=CO)
 mate("ползун по оси направляющей", COIN, plane("polzun", YZ), plane("guide", YZ), align=CO)
 mate("палец D в отверстии ползуна", CONC, face("kamen", 5, 0, 8), face("polzun", 5, 0, 0))
-mate("камень в 1 мм от ползуна (палец держит стопорное кольцо)", DIST, plane("polzun", XY), plane("kamen", XY), 9.0, CO)
+mate("торец пальца D заподлицо с передней гранью ползуна", COIN, face("kamen", 2, 0, 17), face("polzun", 0, 15, 8), align=CO)
 top.RebuildModel(True)
 bad = [t for t, m in MC if not m.Valid]
 print(f"сопряжений: {len(MC)}, не выполнено: {bad or 'нет'}")
+
+
+def check_places():
+    """каждая деталь — там, где задумано (сопряжения «На расстоянии» могут поставить деталь по другую сторону плоскости)"""
+    for k, ((x, y, z), ph) in PLACE.items():
+        o, v = comp[k].Placement.GetOrigin()[-3:], comp[k].Placement.GetVector(0)[-3:]
+        vz = comp[k].Placement.GetVector(2)[-3:]
+        err = max(abs(o[0] - x), abs(o[1] - y), abs(o[2] - z), abs(v[0] - cos(radians(ph))), abs(v[1] - sin(radians(ph))),
+                  abs(vz[2] - 1))
+        assert err < 1e-3, (k, [round(t, 3) for t in o], [round(t, 3) for t in v], [round(t, 3) for t in vz])
+    print("положение всех деталей совпадает с задуманным")
+
+
+check_places()
 
 # ---------------- проверки
 origin = lambda k: comp[k].Placement.GetOrigin()[-3:]
@@ -139,6 +153,7 @@ for ph in (PH_K, 30.0, PH_Y, 50.0, PH_N):
           f"камень ({xk:.3f}; {yk:.3f}); ручка {angle('grip'):6.2f}°")
 drive(PH0)
 itv.UseInterval = True; itv.SetValueRange(PH_K, PH_N); ang.ParamValue = PH0; ang.Update(); top.RebuildModel(True)
+check_places()
 print(f"положение при сохранении: {angle('kulisa'):.2f}°, ползун y = {origin('polzun')[1]:.3f} (e·tg φ = {yD(angle('kulisa')):.3f}), "
       f"диапазон {itv.MinValue:.2f}…{itv.MaxValue:.2f}°, невыполненных сопряжений: {sum(not m.Valid for _, m in MC)}")
 print("упоры:", [round(v, 2) for v in origin("stop_lo")], [round(v, 2) for v in origin("stop_hi")])

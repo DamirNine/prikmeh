@@ -156,7 +156,11 @@ class Part:
         self.extrude(self.sketch(0, lambda d2: d2.ksCircle(xc, yc, r, 1)), 0, cut=True, both=True)
 
     def save(self, fname):
-        self.p.SetAdvancedColor(rgb(self.color), 0.5, 0.6, 0.6, 0.6, 0.0, 0.0)
+        self.p.SetAdvancedColor(rgb(self.color), 0.5, 0.6, 0.8, 0.8, 1.0, 0.5)   # transparency = 1 — непрозрачная
+        for t in (C3.o3d_planeXOY, C3.o3d_planeXOZ, C3.o3d_planeYOZ):  # системные плоскости не показывать в сборке
+            pl = self.p.GetDefaultEntity(t)
+            pl.hidden = True
+            pl.Update()
         self.p.Update()
         path = os.path.join(PARTS_DIR, fname)
         self.doc.SaveAs(path)
