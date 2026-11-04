@@ -3,7 +3,8 @@
 от своей базы; файлы — в папке «Детали». Сборка — kompas_assembly.py (детали соединяются сопряжениями).
 
 Детали: Стойка (основание, лист, ось O, направляющая ползуна, нижний и верхний упоры — одна деталь, ставится на стол),
-Кулиса (полоса со ступицей, рукоять — конец полосы), Камень с пальцем D, Ползун. Базы (ось z при сборке — к наблюдателю, ползун — в плоскости z = 0 сборки): Стойка — ось O на передней грани листа;
+Кулиса (полоса со ступицей, рукоять — конец полосы), Камень с пальцем D, Ползун, Кожух (закрывает механизм, снимается
+вперёд). Базы (ось z при сборке — к наблюдателю, ползун — в плоскости z = 0 сборки): Стойка — ось O на передней грани листа;
 Кулиса — ось O на задней грани полосы, x — вдоль кулисы; Камень — ось пальца на передней грани обоймы; Ползун — ось
 отверстия под палец в средней плоскости."""
 import json, os, subprocess, time
@@ -74,6 +75,19 @@ def upper_edge_y(ph, x):
 
 LO_X0, LO_X1, LO_Y0 = 31.0, 42.0, -5.0            # нижний упор: x 31…42, низ на 5 мм ниже оси O
 HI_X0, HI_X1, HI_Y1 = 15.0, 21.0, 60.0            # верхний упор: x 15…21, верх на 60 мм выше оси O
+# кожух: наружные кромки от оси O, стенка 2 мм; z — от задней кромки (передняя грань стойки) до передней стенки
+CV_X0, CV_X1, CV_Y0, CV_Y1, CV_T, CV_Z = -17.0, 45.5, -53.0, 64.0, 2.0, 46.0
+CV_GAP = 1.0                                      # зазор между кулисой и краями паза
+
+
+def cover_slot():
+    """паз под кулису: полоса между нижним ребром кулисы при φк и верхним ребром при φн, с зазором CV_GAP"""
+    uk, nk = (cos(radians(PH_K)), sin(radians(PH_K))), (-sin(radians(PH_K)), cos(radians(PH_K)))
+    un, nn = (cos(radians(PH_N)), sin(radians(PH_N))), (-sin(radians(PH_N)), cos(radians(PH_N)))
+    h = 9 + CV_GAP
+    pk = lambda r: (r * uk[0] - h * nk[0], r * uk[1] - h * nk[1])
+    pn = lambda r: (r * un[0] + h * nn[0], r * un[1] + h * nn[1])
+    return [pk(0), pk(200), pn(200), pn(0)]
 
 
 # ================================================================ параметрический эскиз
@@ -145,6 +159,15 @@ class Sketch2D:
         rp.SetDPar(dp); rp.SetSPar(sp); rp.SetTPar(tp)
         self.drive(self.d2.ksDiamDimension(rp))
         return c
+
+    def poly_fixed(self, pts):
+        """замкнутый контур с наклонными сторонами: все вершины закреплены (эскиз полностью определён без размеров)"""
+        n = len(pts)
+        seg = [self.d2.ksLineSeg(*pts[i], *pts[(i + 1) % n], 1) for i in range(n)]
+        for i in range(n):
+            self.cons(seg[i], C.ksCMergePoints, 1, seg[(i + 1) % n], 0)
+            self.cons(seg[i], C.ksCFixedPoint, 0)
+        return seg
 
     def axis(self, x0, y0, x1, y1):
         """осевая линия для вращения: вертикальная, начало закреплено, длина — размером"""
@@ -230,6 +253,10 @@ class Part:
                 s.circle(xc, yc, r_in, concentric_to=c)
         self.extrude(self.sketch(z0, draw), z1 - z0)
 
+    def cut(self, draw, z0, z1):
+        """вырез между плоскостями z0 и z1: эскиз в средней плоскости, выдавливание в обе стороны на половину толщины"""
+        self.extrude(self.sketch((z0 + z1) / 2, draw), (z1 - z0) / 2, cut=True, both=True)
+
     def hole(self, xc, yc, r):
         self.extrude(self.sketch(0, lambda s: s.circle(xc, yc, r)), 0, cut=True, both=True)
 
@@ -253,7 +280,7 @@ class Part:
 
 ST3, ST45 = ("Ст3сп ГОСТ 380-2005", 7.85), ("Сталь 45 ГОСТ 1050-2013", 7.85)
 FILES = {"stand": "УКП.00.001 Стойка.m3d", "kulisa": "УКП.01.001 Кулиса.m3d",
-         "kamen": "УКП.02.001 Камень с пальцем D.m3d", "polzun": "УКП.03.001 Ползун.m3d"}
+         "kamen": "УКП.02.001 Камень с пальцем D.m3d", "polzun": "УКП.03.001 Ползун.m3d", "cover": "УКП.04.001 Кожух.m3d"}
 
 
 def build():
@@ -300,6 +327,15 @@ def build():
     p.revolve(p.sketch(0, rod))
     p.hole(0, 0, 5.0)
     mass["polzun"] = p.save(FILES["polzun"])[1]
+
+    # кожух: коробка из листа 2 мм, открытая сзади (к стойке); паз под кулису в правой и верхней стенках и паз под шток в дне
+    # открыты к задней кромке — кожух снимается сдвигом вперёд; начало — ось O на задней кромке
+    p = Part("Кожух", "УКП.04.001", ("АБС-пластик", 1.05), "#b03a2e")
+    p.box(CV_X0, CV_X1, CV_Y0, CV_Y1, 0, CV_Z)
+    p.cut(lambda s: s.rect(CV_X0 + CV_T, CV_Y0 + CV_T, CV_X1 - CV_T, CV_Y1 - CV_T), 0, CV_Z - CV_T)   # полость
+    p.cut(lambda s: s.poly_fixed(cover_slot()), 0, -13.5 - Z_ST + CV_GAP)       # паз под кулису: до передней грани полосы (z = −13,5) + 1 мм
+    p.cut(lambda s: s.rect(E - 6, CV_Y0 - 1, E + 6, CV_Y0 + CV_T + 1), 0, -Z_ST + 6)   # паз под шток Ø8 в дне
+    mass["cover"] = p.save(FILES["cover"])[1]
     json.dump(mass, open(os.path.join(HERE, "parts_mass.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
 

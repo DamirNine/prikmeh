@@ -5,7 +5,9 @@
   кулиса — отверстием на оси O, ступица в 0,5 мм от стойки; угол кулисы — в диапазоне φк…φн (22,72…59,47°);
   камень — средней плоскостью по оси кулисы (скользит вдоль неё);
   ползун — задней гранью по планкам направляющей, ось ползуна — на e от оси O; палец D — соосно отверстию ползуна,
-  торец пальца заподлицо с передней гранью ползуна (обойма — в 1 мм за ползуном, палец держит стопорное кольцо).
+  торец пальца заподлицо с передней гранью ползуна (обойма — в 1 мм за ползуном, палец держит стопорное кольцо);
+  кожух — средними плоскостями по плоскостям стойки, задняя кромка на передней грани стойки; сдвигается вперёд на 0…60 мм
+  (сопряжение «На расстоянии» с диапазоном) — так он снимается, пазы под кулису и шток открыты назад.
 Детали предварительно ставятся в положение φу; грани для сопряжений находятся по точкам, заданным в координатах детали
 (пересчёт в сборку — по текущему положению детали). Проверка до сохранения: угол задаётся сопряжением (диапазон на время
 выключен) — y ползуна = e·tg φ. Диапазон угла КОМПАС соблюдает при перемещении деталей мышью; через API он не принуждается
@@ -24,7 +26,9 @@ doc = qi(app.Documents.Add(C.ksDocumentAssembly, True), A7.IKompasDocument3D)
 top = doc.TopPart
 top.Name, top.Marking = "Укупориватель ручной", "УКП.00.000"
 # ---------------- вставка деталей и начальное положение: (начало детали в сборке, поворот вокруг z)
-PLACE = {"stand": ((0, 0, Z_ST), 0), "kulisa": ((0, 0, -21.5), PH0), "kamen": ((*D0, -9.0), PH0), "polzun": ((*D0, 0.0), 0)}
+PLACE = {"stand": ((0, 0, Z_ST), 0), "kulisa": ((0, 0, -21.5), PH0), "kamen": ((*D0, -9.0), PH0), "polzun": ((*D0, 0.0), 0),
+         "cover": ((0, 0, Z_ST), 0)}
+COVER_MAX = 60.0                                  # на сколько кожух можно сдвинуть вперёд, мм
 comp = {}
 for k, f in FILES.items():
     c = top.Parts.AddFromFile(os.path.join(PARTS_DIR, f), True, False)
@@ -90,6 +94,17 @@ mate("ползун по планкам направляющей", COIN, face("po
 mate("ось ползуна — на e от оси O", DIST, plane("polzun", YZ), plane("stand", YZ), E, CO)
 mate("палец D в отверстии ползуна", CONC, face("kamen", 5, 0, 8), face("polzun", 5, 0, 0))
 mate("торец пальца D заподлицо с передней гранью ползуна", COIN, face("kamen", 2, 0, 17), face("polzun", 0, 15, 8), align=CO)
+mate("кожух по стойке: x", COIN, plane("cover", YZ), plane("stand", YZ), align=CO)
+mate("кожух по стойке: y", COIN, plane("cover", XZ), plane("stand", XZ), align=CO)
+cov = mates.Add(DIST)                                                   # сдвиг кожуха вперёд с диапазоном
+cov.BaseObject1, cov.BaseObject2 = plane("stand", XY), plane("cover", XY)   # такой порядок — сдвиг вперёд (+z)
+cov.Alignment = CO
+cov_itv = qi(cov, A7.IMateInterval)
+cov_itv.UseInterval = True
+cov_itv.SetValueRange(0.0, COVER_MAX)
+cov.ParamValue = 0.0
+print(f"  кожух сдвигается вперёд на 0…{COVER_MAX:g} мм: {'да' if cov.Update() else 'НЕТ'}")
+MC.append(("кожух", cov))
 top.RebuildModel(True)
 bad = [t for t, m in MC if not m.Valid]
 print(f"сопряжений: {len(MC)}, не выполнено: {bad or 'нет'}")
@@ -126,6 +141,13 @@ for ph in (PH_K, 30.0, PH_Y, 50.0, PH_N):
     out["kin"].append([ph, angle("kulisa"), y, yD(ph)])
     print(f"  φ = {ph:6.2f}° (кулиса {angle('kulisa'):6.2f}°): ползун y = {y:8.3f}, e·tg φ = {yD(ph):8.3f}; "
           f"камень ({xk:.3f}; {yk:.3f}), угол камня {angle('kamen'):6.2f}°")
+print("Проверка 2 — кожух (сдвиг задан сопряжением):")
+for dz in (COVER_MAX, 0.0):
+    cov_itv.UseInterval = False
+    cov.ParamValue = dz; cov.Update(); top.RebuildModel(True)
+    print(f"  сдвиг {dz:g} мм: задняя кромка кожуха z = {origin('cover')[2]:.2f} (надо {Z_ST + dz:.2f})")
+    assert abs(origin("cover")[2] - (Z_ST + dz)) < 1e-3
+cov_itv.UseInterval = True; cov_itv.SetValueRange(0.0, COVER_MAX); cov.Update(); top.RebuildModel(True)
 drive(PH0)
 itv.UseInterval = True; itv.SetValueRange(PH_K, PH_N); ang.ParamValue = PH0; ang.Update(); top.RebuildModel(True)
 check_places()
