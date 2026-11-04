@@ -76,6 +76,85 @@ LO_X0, LO_X1, LO_Y0 = 31.0, 42.0, -5.0            # нижний упор: x 31�
 HI_X0, HI_X1, HI_Y1 = 15.0, 21.0, 60.0            # верхний упор: x 15…21, верх на 60 мм выше оси O
 
 
+# ================================================================ параметрический эскиз
+class Sketch2D:
+    """эскиз с ограничениями: отрезки — горизонтальность/вертикальность и совпадение концов, одна точка зафиксирована;
+    длины и диаметры — управляющими (фиксированными) размерами, ассоциированными с геометрией. Итог — эскиз полностью
+    определён («+» в дереве)."""
+
+    def __init__(self, d2):
+        self.d2 = d2
+
+    def cons(self, obj, kind, index=0, partner=0, pindex=0):
+        cp = k5.GetParamStruct(C.ko_ConstraintParam)
+        cp.Init()
+        cp.constrType, cp.index, cp.partner, cp.partnerIndex = kind, index, partner, pindex
+        assert self.d2.ksSetObjConstraint(obj, cp), ("ограничение не наложено", kind)
+
+    def drive(self, dim):
+        """размер ассоциируется с геометрией и становится управляющим"""
+        o = qi(k5.TransferReference(dim, self.d2.reference), A7.IDrawingObject1)
+        assert o.Associate(), "размер не ассоциирован"
+        c = qi(o.NewConstraint(), A7.IParametriticConstraint)
+        c.ConstraintType = C.ksCFixedDim
+        assert c.Create(), "размер не зафиксирован"
+
+    def dim_lin(self, p1, p2, vertical, off):
+        lp = k5.GetParamStruct(C.ko_LDimParam)
+        dp = lp.GetDPar(); dp.Init(); dp.pt1 = dp.pt2 = 1
+        sp = lp.GetSPar(); sp.Init()
+        sp.x1, sp.y1, sp.x2, sp.y2 = p1[0], p1[1], p2[0], p2[1]
+        sp.dx, sp.dy, sp.basePoint, sp.ps = (off, 0, 1, 1) if vertical else (0, off, 1, 0)
+        tp = lp.GetTPar(); tp.Init(False); tp.bitFlag = 1; tp.sign = 0      # 1 — номинал определяется автоматически
+        lp.SetDPar(dp); lp.SetSPar(sp); lp.SetTPar(tp)
+        self.drive(self.d2.ksLinDimension(lp))
+
+    def poly(self, pts, hv, dims, fix=0, style=1):
+        """замкнутый контур: hv[i] — 'H', 'V' или None для отрезка i (pts[i] -> pts[i+1]); dims — номера отрезков с размером
+        длины (горизонтальные и вертикальные); fix — номер вершины, закреплённой на месте"""
+        n = len(pts)
+        seg = [self.d2.ksLineSeg(*pts[i], *pts[(i + 1) % n], style) for i in range(n)]
+        for i, t in enumerate(hv):
+            if t:
+                self.cons(seg[i], C.ksCHorizontal if t == "H" else C.ksCVertical)
+        for i in range(n):
+            self.cons(seg[i], C.ksCMergePoints, 1, seg[(i + 1) % n], 0)
+        self.cons(seg[fix], C.ksCFixedPoint, 0)
+        cx, cy = sum(x for x, _ in pts) / n, sum(y for _, y in pts) / n
+        for i in dims:
+            a, b = pts[i], pts[(i + 1) % n]
+            if hv[i] == "H":
+                self.dim_lin(a, b, False, 6 if a[1] > cy else -6)
+            else:
+                self.dim_lin(a, b, True, 6 if a[0] > cx else -6)
+        return seg
+
+    def rect(self, x0, y0, x1, y1):
+        return self.poly([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], "HVHV", (0, 1))
+
+    def circle(self, xc, yc, r, concentric_to=None):
+        c = self.d2.ksCircle(xc, yc, r, 1)
+        if concentric_to:
+            self.cons(c, C.ksCConcentricity, 0, concentric_to, 0)
+        else:
+            self.cons(c, C.ksCFixedPoint, 0)
+        rp = k5.GetParamStruct(C.ko_RDimParam)
+        dp = rp.GetDPar(); dp.Init(); dp.pt1 = dp.pt2 = 1
+        sp = rp.GetSPar(); sp.Init(); sp.xc, sp.yc, sp.rad = xc, yc, r
+        tp = rp.GetTPar(); tp.Init(False); tp.bitFlag = 1; tp.sign = 1        # знак диаметра
+        rp.SetDPar(dp); rp.SetSPar(sp); rp.SetTPar(tp)
+        self.drive(self.d2.ksDiamDimension(rp))
+        return c
+
+    def axis(self, x0, y0, x1, y1):
+        """осевая линия для вращения: вертикальная, начало закреплено, длина — размером"""
+        a = self.d2.ksLineSeg(x0, y0, x1, y1, 3)
+        self.cons(a, C.ksCVertical)
+        self.cons(a, C.ksCFixedPoint, 0)
+        self.dim_lin((x0, y0), (x1, y1), True, -6)
+        return a
+
+
 # ================================================================ построение детали (API5)
 class Part:
     def __init__(self, name, marking, material, color):
@@ -86,6 +165,7 @@ class Part:
         self.p.SetMaterial(*material)
         self.color = color
         self.first = True
+        self.sketches = []
 
     def plane_z(self, z):
         if abs(z) < 1e-9:
@@ -103,9 +183,11 @@ class Part:
         d = sk.GetDefinition()
         d.SetPlane(self.plane_z(z))
         sk.Create()
-        d2 = d.BeginEdit()
-        draw(d2)
-        d.EndEdit()
+        try:
+            draw(Sketch2D(d.BeginEdit()))
+        finally:
+            d.EndEdit()                           # эскиз не должен остаться в режиме редактирования при ошибке
+        self.sketches.append(sk)
         return sk
 
     def extrude(self, sk, depth, cut=False, both=False):
@@ -135,24 +217,21 @@ class Part:
         assert ent.Create(), ("вращение не построено", self.p.name)
         self.first = False
 
-    def poly(self, pts, z0, z1, cut=False):
-        def draw(d2):
-            for (x1, y1), (x2, y2) in zip(pts, pts[1:] + pts[:1]):
-                d2.ksLineSeg(x1, y1, x2, y2, 1)
-        self.extrude(self.sketch(z0, draw), z1 - z0, cut)
+    def poly(self, pts, z0, z1, hv, dims, fix=0):
+        self.extrude(self.sketch(z0, lambda s: s.poly(pts, hv, dims, fix)), z1 - z0)
 
-    def box(self, x0, x1, y0, y1, z0, z1, cut=False):
-        self.poly([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], z0, z1, cut)
+    def box(self, x0, x1, y0, y1, z0, z1):
+        self.extrude(self.sketch(z0, lambda s: s.rect(x0, y0, x1, y1)), z1 - z0)
 
     def cyl(self, xc, yc, r, z0, z1, r_in=None):
-        def draw(d2):
-            d2.ksCircle(xc, yc, r, 1)
+        def draw(s):
+            c = s.circle(xc, yc, r)
             if r_in:
-                d2.ksCircle(xc, yc, r_in, 1)
+                s.circle(xc, yc, r_in, concentric_to=c)
         self.extrude(self.sketch(z0, draw), z1 - z0)
 
     def hole(self, xc, yc, r):
-        self.extrude(self.sketch(0, lambda d2: d2.ksCircle(xc, yc, r, 1)), 0, cut=True, both=True)
+        self.extrude(self.sketch(0, lambda s: s.circle(xc, yc, r)), 0, cut=True, both=True)
 
     def save(self, fname):
         self.p.SetAdvancedColor(rgb(self.color), 0.5, 0.6, 0.8, 0.8, 1.0, 0.5)   # transparency = 1 — непрозрачная
@@ -161,12 +240,14 @@ class Part:
             pl.hidden = True
             pl.Update()
         self.p.Update()
+        states = [qi(k5.TransferInterface(sk, C.ksAPI7Dual, 0), A7.ISketch).ConstraintsState for sk in self.sketches]
+        assert all(st == C.ksStateWellConstrained for st in states), (fname, states)
         path = os.path.join(PARTS_DIR, fname)
         self.doc.SaveAs(path)
         mi = qi(qi(app.ActiveDocument, A7.IKompasDocument3D).TopPart, A7.IMassInertiaParam7)
         mass = mi.Mass
         self.doc.close()
-        print(f"  {fname}: масса {mass:.1f} г")
+        print(f"  {fname}: масса {mass:.1f} г, эскизов {len(states)} — все полностью определены")
         return path, mass
 
 
@@ -189,20 +270,15 @@ def build():
         p.box(xa, xb, Y_BOT, Y_TOP, 26.0, 42.0)
         p.box(xa, xb, Y_BOT, Y_BOT + 12.0, 0, 26.0)                   # кронштейны планок
     p.poly([(LO_X0, LO_Y0), (LO_X1, LO_Y0), (LO_X1, lower_edge_y(PH_K, LO_X1)), (LO_X0, lower_edge_y(PH_K, LO_X0))],
-           0, 20.5)                                                   # нижний упор: грань по нижнему ребру кулисы при φк
+           0, 20.5, ("H", "V", None, "V"), (0, 1, 3))                  # нижний упор: грань по нижнему ребру кулисы при φк
     p.poly([(HI_X0, upper_edge_y(PH_N, HI_X0)), (HI_X1, upper_edge_y(PH_N, HI_X1)), (HI_X1, HI_Y1), (HI_X0, HI_Y1)],
-           0, 20.5)                                                   # верхний упор: грань по верхнему ребру кулисы при φн
+           0, 20.5, (None, "V", "H", "V"), (1, 2, 3), fix=3)           # верхний упор: грань по верхнему ребру кулисы при φн
     mass["stand"] = p.save(FILES["stand"])[1]
 
     L, R_ = 500.0, 9.0                                                # кулиса: полоса 8 × 18 × 500 + ступица Ø16 × 12
-
-    def strip(d2):
-        d2.ksLineSeg(0, -R_, L - R_, -R_, 1)
-        d2.ksArcByPoint(L - R_, 0, R_, L - R_, -R_, L - R_, R_, 1, 1)
-        d2.ksLineSeg(L - R_, R_, 0, R_, 1)
-        d2.ksArcByPoint(0, 0, R_, 0, R_, 0, -R_, 1, 1)
     p = Part("Кулиса", "УКП.01.001", ST3, "#2d3540")
-    p.extrude(p.sketch(0, strip), 8.0)
+    p.box(0, L - R_, -R_, R_, 0, 8.0)                                 # полоса между центрами скруглений
+    p.extrude(p.sketch(0, lambda s: (s.circle(0, 0, R_), s.circle(L - R_, 0, R_))), 8.0)   # скругления концов R9
     p.cyl(0, 0, 8.0, -12.0, 0, r_in=5.0)
     p.hole(0, 0, 5.0)
     mass["kulisa"] = p.save(FILES["kulisa"])[1]
@@ -216,11 +292,9 @@ def build():
     p.cyl(0, 0, 5.0, 0, 17.0)
     mass["kamen"] = p.save(FILES["kamen"])[1]
 
-    def rod(d2):                                                      # шток Ø8 × 60 и головка Ø40 × 24 вращением вокруг y
-        pts = [(0, -20), (4, -20), (4, -80), (20, -80), (20, -104), (0, -104)]
-        for (x1, y1), (x2, y2) in zip(pts, pts[1:] + pts[:1]):
-            d2.ksLineSeg(x1, y1, x2, y2, 1)
-        d2.ksLineSeg(0, 0, 0, -110, 3)
+    def rod(s):                                                       # шток Ø8 × 60 и головка Ø40 × 24 вращением вокруг y
+        s.poly([(0, -20), (4, -20), (4, -80), (20, -80), (20, -104), (0, -104)], "HVHVHV", (0, 1, 3, 4))
+        s.axis(0, 0, 0, -110)
     p = Part("Ползун", "УКП.03.001", ST3, "#3a4049")
     p.box(-12, 12, -20, 20, -8.0, 8.0)
     p.revolve(p.sketch(0, rod))
