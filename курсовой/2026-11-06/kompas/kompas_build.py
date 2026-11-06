@@ -5,12 +5,12 @@
 Детали: Стойка (лист с отверстиями под крепёж к стене, основание под бутылку, ось O, направляющая ползуна, нижний и верхний
 упоры — одна деталь),
 Кулиса (полоса со ступицей, рукоять — конец полосы), Камень с пальцем D, Ползун, Кожух (закрывает механизм, снимается
-вперёд). Базы (ось z при сборке — к наблюдателю, ползун — в плоскости z = 0 сборки): Стойка — ось O на передней грани листа;
+вперёд), Бутылка (обрабатываемое изделие: стоит на основании, по оси ползуна). Базы (ось z при сборке — к наблюдателю, ползун — в плоскости z = 0 сборки): Стойка — ось O на передней грани листа;
 Кулиса — ось O на задней грани полосы, x — вдоль кулисы; Камень — ось пальца на передней грани обоймы; Ползун — ось
-отверстия под палец в средней плоскости."""
+отверстия под палец в средней плоскости; Бутылка — центр дна, y вдоль оси."""
 import json, os, subprocess, time
 from math import radians, tan, cos, sin
-import pythoncom
+import pythoncom, pywintypes, win32api, win32con, win32process
 from win32com.client import GetActiveObject, gencache
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -34,6 +34,24 @@ C3 = mod("ksConstants3D.tlb").constants
 A5, A7 = mod("kAPI5.tlb"), mod("kAPI7.tlb")
 
 
+def wait_apps():
+    """приложения КОМПАСа (APM FEM и др.) загружаются ещё 5–7 с после старта: ждём, пока число модулей перестанет расти.
+    Деталь, созданная в это время, подхватывается APM FEM: рядом появляется .apmf, а следующий SaveAs падает в kAPI2D5"""
+    out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq kStudy.exe", "/NH", "/FO", "CSV"], capture_output=True).stdout
+    h = win32api.OpenProcess(win32con.PROCESS_QUERY_INFORMATION | win32con.PROCESS_VM_READ, False,
+                             int(out.decode("cp866").split('","')[1]))
+    n, t_same = 0, time.time()
+    while time.time() - t_same < 4:
+        try:
+            m = len(win32process.EnumProcessModulesEx(h, win32process.LIST_MODULES_ALL))
+        except pywintypes.error:                  # список модулей меняется прямо во время чтения
+            m = 0
+        if m != n:
+            n, t_same = m, time.time()
+        time.sleep(0.5)
+    win32api.CloseHandle(h)
+
+
 def connect():
     try:
         GetActiveObject("Kompas.Application.5")
@@ -45,6 +63,7 @@ def connect():
                 GetActiveObject("Kompas.Application.5"); break
             except pythoncom.com_error:
                 pass
+        wait_apps()
     k5 = A5.KompasObject(GetActiveObject("Kompas.Application.5")._oleobj_.QueryInterface(A5.KompasObject.CLSID,
                                                                                          pythoncom.IID_IDispatch))
     app = A7.IApplication(GetActiveObject("Kompas.Application.7")._oleobj_.QueryInterface(A7.IApplication.CLSID,
@@ -90,6 +109,29 @@ def cover_slot():
     pk = lambda r: (r * uk[0] - h * nk[0], r * uk[1] - h * nk[1])
     pn = lambda r: (r * un[0] + h * nn[0], r * un[1] + h * nn[1])
     return [pk(0), pk(200), pn(200), pn(0)]
+
+
+BOTTLE_H, BOTTLE_R = 226.5, 30.2                  # Wiegand-Glas Longneck 0,33 л, арт. 456-10-03: высота и радиус
+
+
+def bottle_contour():
+    """половина сечения бутылки (ось вращения x = 0, дно y = 0): венчик 26 H 180 — наружный Ø26,55, горло Ø17,4; плечо — две
+    сопряжённые дуги. Стенка и начало плеча подобраны под массу 220 г из ТЗ и вместимость до краёв 355 мл (0,33 л + запас
+    до края). Вершина (x, y) — отрезок к ней, (x, y, xc, yc, r, d) — дуга к ней"""
+    rb, rn, t, b = BOTTLE_R, 13.0, 2.3, 5.0       # радиус корпуса, радиус шейки, стенка, дно
+    y1, y2 = 98.0, 173.4                          # начало плеча, начало шейки
+    dx, dy = rb - rn, y2 - y1
+    s = (dx ** 2 + dy ** 2) / (2 * dx)            # сумма радиусов дуг: при ней они касаются друг друга
+    r1, r2 = 0.76 * s, 0.24 * s                   # выпуклая и вогнутая дуги плеча
+    c1, c2 = (rb - r1, y1), (rn + r2, y2)
+    ux, uy = (c2[0] - c1[0]) / s, (c2[1] - c1[1]) / s
+    tan_pt = lambda r: (c1[0] + r * ux, c1[1] + r * uy)   # точка касания дуг на радиусе r первой дуги
+    ri = rb - t                                   # внутренний радиус корпуса
+    return [(0.0, 0.0), (24.0, 0.0), (rb, 6.2, 24.0, 6.2, 6.2, 1), (rb, y1),
+            (*tan_pt(r1), *c1, r1, 1), (rn, y2, *c2, r2, -1),
+            (rn, 218.2), (13.3, 219.6), (13.3, 225.0), (12.0, BOTTLE_H), (8.7, BOTTLE_H), (8.7, 212.0), (rn - t, 205.0),
+            (rn - t, y2), (*tan_pt(r1 - t), *c2, r2 + t, 1), (ri, y1, *c1, r1 - t, -1),
+            (ri, b + 3.2), (ri - 3.2, b, ri - 3.2, b + 3.2, 3.2, -1), (0.0, b)]
 
 
 # ================================================================ параметрический эскиз
@@ -171,6 +213,19 @@ class Sketch2D:
             self.cons(seg[i], C.ksCFixedPoint, 0)
         return seg
 
+    def contour(self, pts):
+        """замкнутый контур из отрезков и дуг (d = 1 — дуга против часовой): концы и центры закреплены, эскиз определён без размеров"""
+        p0 = pts[-1][:2]
+        for q in pts:
+            x, y = q[:2]
+            if len(q) == 2:
+                obj, points = self.d2.ksLineSeg(*p0, x, y, 1), (0, 1)
+            else:
+                obj, points = self.d2.ksArcByPoint(q[2], q[3], q[4], *p0, x, y, q[5], 1), (0, 1, 2)
+            for i in points:
+                self.cons(obj, C.ksCFixedPoint, i)
+            p0 = (x, y)
+
     def axis(self, x0, y0, x1, y1):
         """осевая линия для вращения: вертикальная, начало закреплено, длина — размером"""
         a = self.d2.ksLineSeg(x0, y0, x1, y1, 3)
@@ -182,13 +237,13 @@ class Sketch2D:
 
 # ================================================================ построение детали (API5)
 class Part:
-    def __init__(self, name, marking, material, color):
+    def __init__(self, name, marking, material, color, opacity=1.0):
         self.doc = k5.Document3D()
         self.doc.Create(False, True)
         self.p = self.doc.GetPart(C3.pTop_Part)
         self.p.name, self.p.marking = name, marking
         self.p.SetMaterial(*material)
-        self.color = color
+        self.color, self.opacity = color, opacity
         self.first = True
         self.sketches = []
 
@@ -263,7 +318,7 @@ class Part:
         self.extrude(self.sketch(0, lambda s: s.circle(xc, yc, r)), 0, cut=True, both=True)
 
     def save(self, fname):
-        self.p.SetAdvancedColor(rgb(self.color), 0.5, 0.6, 0.8, 0.8, 1.0, 0.5)   # transparency = 1 — непрозрачная
+        self.p.SetAdvancedColor(rgb(self.color), 0.5, 0.6, 0.8, 0.8, self.opacity, 0.5)   # 1 — непрозрачная
         for t in (C3.o3d_planeXOY, C3.o3d_planeXOZ, C3.o3d_planeYOZ):  # системные плоскости не показывать в сборке
             pl = self.p.GetDefaultEntity(t)
             pl.hidden = True
@@ -273,6 +328,7 @@ class Part:
         assert all(st == C.ksStateWellConstrained for st in states), (fname, states)
         path = os.path.join(PARTS_DIR, fname)
         self.doc.SaveAs(path)
+        assert not os.path.exists(path + ".apmf"), "APM FEM подключился к детали: удалите .apmf, закройте КОМПАС и запустите заново"
         # масса — у своего документа: активным окном может оказаться другой (КОМПАС восстанавливает черновики после сбоя)
         d7 = k5.TransferInterface(self.doc, C.ksAPI7Dual, 0)
         mi = qi(qi(d7, A7.IKompasDocument3D).TopPart, A7.IMassInertiaParam7)
@@ -282,9 +338,10 @@ class Part:
         return path, mass
 
 
-ST3, ST45 = ("Ст3сп ГОСТ 380-2005", 7.85), ("Сталь 45 ГОСТ 1050-2013", 7.85)
+ST3, ST45, GLASS = ("Ст3сп ГОСТ 380-2005", 7.85), ("Сталь 45 ГОСТ 1050-2013", 7.85), ("Стекло", 2.5)
 FILES = {"stand": "УКП.00.001 Стойка.m3d", "kulisa": "УКП.01.001 Кулиса.m3d",
-         "kamen": "УКП.02.001 Камень с пальцем D.m3d", "polzun": "УКП.03.001 Ползун.m3d", "cover": "УКП.04.001 Кожух.m3d"}
+         "kamen": "УКП.02.001 Камень с пальцем D.m3d", "polzun": "УКП.03.001 Ползун.m3d", "cover": "УКП.04.001 Кожух.m3d",
+         "bottle": "УКП.05.001 Бутылка.m3d"}
 WALL_HOLES = [(X_ST0 + 8, Y_ST0 + H_ST - 10), (X_ST1 - 8, Y_ST0 + H_ST - 10), (X_ST0 + 8, Y_ST0 + 10), (X_ST1 - 8, Y_ST0 + 10)]
 
 
@@ -346,6 +403,10 @@ def build():
     p.cut(lambda s: s.poly_fixed(cover_slot()), 0, -13.5 - Z_ST + CV_GAP)       # паз под кулису: до передней грани полосы (z = −13,5) + 1 мм
     p.cut(lambda s: s.rect(E - 6, CV_Y0 - 1, E + 6, CV_Y0 + CV_T + 1), 0, -Z_ST + 6)   # паз под шток Ø8 в дне
     mass["cover"] = p.save(FILES["cover"])[1]
+    # бутылка: полая, стекло; не часть изделия, ставится на основание по оси ползуна
+    p = Part("Бутылка", "УКП.05.001", GLASS, "#8a4b16", opacity=0.6)
+    p.revolve(p.sketch(0, lambda s: (s.contour(bottle_contour()), s.axis(0, -10, 0, BOTTLE_H + 10))))
+    mass["bottle"] = p.save(FILES["bottle"])[1]
     json.dump(mass, open(os.path.join(HERE, "parts_mass.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
 
