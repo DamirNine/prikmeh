@@ -1,3 +1,6 @@
 ~$*.doc*
 ~$*.xls*
 ~$*.ppt*
+~$*
+__pycache__/
+*.apmf
