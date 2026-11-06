@@ -39,6 +39,10 @@ for k, f in FILES.items():
         pl.Rotate(0.0, 0.0, 0.0, 0.0, 0.0, 1.0, ang)               # центр поворота — в координатах самой детали
     c.UpdatePlacement(False)
     comp[k] = c
+PARTS_MASS = json.load(open(os.path.join(HERE, "parts_mass.json"), encoding="utf-8"))
+for k, c in comp.items():                         # КОМПАС держит в памяти прежнюю модель файла, даже когда документы закрыты:
+    m = qi(c, A7.IMassInertiaParam7).Mass         # после перестройки деталей, открывавшихся в этом сеансе, его надо перезапустить
+    assert abs(m - PARTS_MASS[k]) < 0.5, ("в сборку попала старая модель — перезапустите КОМПАС", k, m, PARTS_MASS[k])
 comp["stand"].Fixed = True                                              # стойка крепится к стене
 comp["stand"].Update()
 top.RebuildModel(True)
