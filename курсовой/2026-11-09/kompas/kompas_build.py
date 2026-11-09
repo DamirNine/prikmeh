@@ -432,11 +432,7 @@ def build():
     p.hole(0, 0, PIN_D / 2)                                           # под палец D с натягом (H7/r6)
     mass["kamen"] = p.save(FILES["kamen"])[1]
 
-    # палец D: телом вращения вокруг z; фаски 0,5 сзади и 1 на резьбовом конце; цвет — как у камня
-    p = Part("Палец D", "УКП.02.002", ST45, "#e8c99a")
-    p.revolve(p.sketch_xz(lambda s: (s.contour([(r, -z) for r, z in PIN_PROFILE]), s.axis(0, 5, 0, -PIN_L - 5))))
-    assert p.thread(0, 4, PIN_L - 1, 8, 1.25), "резьба пальца должна быть наружной"
-    mass["pin"] = p.save(FILES["pin"])[1]
+    mass["pin"] = build_pin()
 
     d1, d2, s = WASHER
     p = Part("Шайба 8 ГОСТ 11371-78", "", ST3, FASTENER)
@@ -474,6 +470,17 @@ def build():
     json.dump(mass, open(os.path.join(HERE, "parts_mass.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
 
+PIN_COLOR = "#7fae6a"                             # палец D — отдельная деталь, свой цвет (как на рис. 13 расчёта)
+
+
+def build_pin():
+    """палец D: телом вращения вокруг z; фаски 0,5 сзади и 1 на резьбовом конце, условная резьба М8"""
+    p = Part("Палец D", "УКП.02.002", ST45, PIN_COLOR)
+    p.revolve(p.sketch_xz(lambda s: (s.contour([(r, -z) for r, z in PIN_PROFILE]), s.axis(0, 5, 0, -PIN_L - 5))))
+    assert p.thread(0, 4, PIN_L - 1, 8, 1.25), "резьба пальца должна быть наружной"
+    return p.save(FILES["pin"])[1]
+
+
 def build_polzun():
     """ползун: направляемая часть 24 × 40 × 16 с отверстием под палец D, шток Ø8 × L_ROD и головка Ø40 с конической
     горловиной (не плоское дно): вход Ø32,1 → Ø28,6 на длине хода обжима 6 мм, выше — цилиндр Ø28,6 до потолка полости.
@@ -486,10 +493,11 @@ def build_polzun():
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["polzun"]:                                   # перестроить только ползун, массы остальных — как были
+    if sys.argv[1:] and set(sys.argv[1:]) <= {"polzun", "pin"}:      # перестроить только эти детали, массы остальных — как были
         mj = os.path.join(HERE, "parts_mass.json")
         m = json.load(open(mj, encoding="utf-8"))
-        m["polzun"] = build_polzun()
+        for k in sys.argv[1:]:
+            m[k] = {"polzun": build_polzun, "pin": build_pin}[k]()
         json.dump(m, open(mj, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     else:
         build()

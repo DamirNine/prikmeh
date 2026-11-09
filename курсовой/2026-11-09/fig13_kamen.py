@@ -20,6 +20,7 @@ plt.rcParams.update({"font.family": "DejaVu Sans", "mathtext.fontset": "dejavusa
                      "axes.titlesize": 9.4, "axes.titleweight": "bold", "axes.titlelocation": "left", "hatch.linewidth": 0.7})
 INK, INK2, ACC = "#0b0b0b", "#52514e", "#c4372b"
 STONE, STRIP, SLIDER, FAST = "#e8c99a", "#c9d4e3", "#b9bec6", "#dfe3e8"
+PIN = "#7fae6a"                                               # палец D — отдельная деталь, свой цвет (как в 3D-модели)
 cm = lambda s: s.replace(".", ",").replace("-", "−")
 fmt = lambda x, d: cm(f"{x:.{d}f}")
 L = 500.0
@@ -105,7 +106,7 @@ for lab, x in pos3:
     if main:
         for sg in (1, -1):
             arts.append(ax.plot([x - lk / 2, x + lk / 2], [sg * h / 2] * 2, color=INK2, lw=0.6, ls=(0, (3, 2)), zorder=5)[0])
-        ax.add_patch(Circle((x, 0), r_D, fc=STONE, ec=INK, lw=0.9, zorder=6))       # торец пальца D, запрессованного в обойму
+        ax.add_patch(Circle((x, 0), r_D, fc=PIN, ec=INK, lw=0.9, zorder=6))       # торец пальца D, запрессованного в обойму
         ax.plot([x, x], [-r_D - 2, r_D + 2], color=INK2, lw=0.5, ls=AXIS, zorder=7)
         ax.plot([x - r_D - 2, x + r_D + 2], [0, 0], color=INK2, lw=0.5, ls=AXIS, zorder=7)
         ax.text(x - 5.2, 5.5, "D", ha="right", va="bottom", fontsize=8.5, zorder=9)
@@ -140,7 +141,7 @@ body = [[xf, -yt], [xl1, -yt], [xl1, -yl], [xl0, -yl], [xl0, -h / 2], [-b / 2, -
         [xl0, yl], [xl1, yl], [xl1, yt], [xf, yt]]
 ax.add_patch(Polygon(body, closed=True, fc=STONE, ec=INK, lw=1.0, hatch="////", joinstyle="miter"))
 ax.add_patch(Rectangle((-b / 2, -h / 2), b, h, fc=STRIP, ec=INK, lw=1.0, hatch="\\\\\\\\"))
-ax.add_patch(Rectangle((xf - pin_l, -r_D), pin_l, 2 * r_D, fc=STONE, ec=INK, lw=1.0))    # палец за секущей плоскостью
+ax.add_patch(Rectangle((xf - pin_l, -r_D), pin_l, 2 * r_D, fc=PIN, ec=INK, lw=1.0))    # палец за секущей плоскостью
 wavy_v(ax, xf - pin_l, -r_D - 0.6, r_D + 0.6)
 for sg in (1, -1):                                           # палец внутри стенки обоймы (запрессован) — невидимый контур
     ax.plot([xf, -b / 2], [sg * r_D, sg * r_D], color=INK, lw=0.7, ls=HID, zorder=6)
@@ -176,7 +177,7 @@ ax.add_patch(Rectangle((X(SL1), -SL_H), SL1 - SL0, 2 * SL_H, fc=SLIDER, ec=INK, 
 # палец: Ø10 от заднего торца до уступа, резьба Ø8 с фаской 1; сквозь стенку обоймы и ползун — целиком (не рассекается)
 pin = [[X(P0), -r_D + 0.5], [X(P0 + 0.5), -r_D], [X(P1), -r_D], [X(P1), -4.0], [X(PL - 1), -4.0], [X(PL), -3.0], [X(PL), 3.0],
        [X(PL - 1), 4.0], [X(P1), 4.0], [X(P1), r_D], [X(P0 + 0.5), r_D], [X(P0), r_D - 0.5]]
-ax.add_patch(Polygon(pin, closed=True, fc=STONE, ec=INK, lw=1.1, zorder=4))
+ax.add_patch(Polygon(pin, closed=True, fc=PIN, ec=INK, lw=1.1, zorder=4))
 for sg in (1, -1):                                             # резьба: тонкая линия по внутреннему диаметру М8
     ax.plot([X(P1), X(PL - 1)], [sg * 3.32, sg * 3.32], color=INK, lw=0.5, zorder=5)
 ax.plot([X(P1), X(P1)], [-4.0, 4.0], color=INK, lw=0.8, zorder=5)
