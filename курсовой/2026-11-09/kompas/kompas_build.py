@@ -499,5 +499,7 @@ if __name__ == "__main__":
         for k in sys.argv[1:]:
             m[k] = {"polzun": build_polzun, "pin": build_pin}[k]()
         json.dump(m, open(mj, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        # сопряжения сборки ссылаются на грани деталей; у перестроенной детали грани новые — старая сборка откроется с «!»
+        print("ВАЖНО: закройте сборку без сохранения и пересоберите её: python kompas_assembly.py")
     else:
         build()
