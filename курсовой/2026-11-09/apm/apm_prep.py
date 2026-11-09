@@ -115,14 +115,15 @@ def split_kulisa(path):
     assert not d.Changed
 
 
-for key in sys.argv[1:]:
-    src = os.path.join(PARTS_DIR, FILES[key])
-    dst = os.path.join(DET, FILES[key].replace(".m3d", " (APM).m3d"))
-    print(NAMES[key] + ":")
-    if not os.path.exists(dst):                                  # новая копия; если уже есть — разъём не повторяем
-        shutil.copy2(src, dst)
-        if key == "kulisa":
-            split_kulisa(dst)
-    prettify(dst)
-    print("  копия для APM:", os.path.relpath(dst, HERE))
-    picture(dst, os.path.join(PIC, f"{NAMES[key]}_1_деталь.png"), VIEW.get(key))
+if __name__ == "__main__":
+    for key in sys.argv[1:]:
+        src = os.path.join(PARTS_DIR, FILES[key])
+        dst = os.path.join(DET, FILES[key].replace(".m3d", " (APM).m3d"))
+        print(NAMES[key] + ":")
+        if not os.path.exists(dst):                                  # новая копия; если уже есть — разъём не повторяем
+            shutil.copy2(src, dst)
+            if key == "kulisa":
+                split_kulisa(dst)
+        prettify(dst)
+        print("  копия для APM:", os.path.relpath(dst, HERE))
+        picture(dst, os.path.join(PIC, f"{NAMES[key]}_1_деталь.png"), VIEW.get(key))
