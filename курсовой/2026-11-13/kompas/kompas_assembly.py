@@ -179,6 +179,9 @@ print(f"положение при сохранении: {angle('kulisa'):.2f}°,
 wall = origin("stand")[2] - B_ST                                        # стена — плоскость задней грани листа
 print(f"от стены до кулисы: задняя грань {origin('kulisa')[2] - wall:.1f} мм, передняя {origin('kulisa')[2] + 8 - wall:.1f} мм; "
       f"ось ползуна {origin('polzun')[2] - wall:.1f} мм")
+for x in qi(top, A7.IFeature7).SubFeatures(1, False, False) or ():    # плоскости и оси сборки не просвечивают сквозь кожух
+    if qi(x, A7.IFeature7).Name.startswith(("Плоскость", "Ось", "Начало")):
+        o = qi(x, A7.IModelObject); o.Hidden = True; o.Update()
 doc.SaveAs(ASM)
 print("сохранено:", ASM, os.path.exists(ASM))
 json.dump(out, open(os.path.join(HERE, "assembly_check.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
