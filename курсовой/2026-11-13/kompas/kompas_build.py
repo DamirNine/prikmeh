@@ -373,7 +373,9 @@ class Part:
         for x, y, z in points:
             objs = [qi(o, A7.IModelObject) for o in (top.FindObjectsByPoint(x, y, z, True) or ())]
             es = [o for o in objs if o.ModelObjectType == C3.o3d_edge]
-            assert len(es) == 1, ("ребро под скругление", self.p.name, (x, y, z), len(es))
+            # одно и то же ребро может прийти дважды (по разу от каждой из двух граней) — проверяем, что это одно ребро
+            lens = {round(qi(e, A7.IEdge).GetLength(1), 4) for e in es}
+            assert len(es) >= 1 and len(lens) == 1, ("ребро под скругление", self.p.name, (x, y, z), len(es), lens)
             arr.Add(A5.ksEntity(k5.TransferInterface(es[0], C.ksAPI5Auto, 0)))
         assert f.Create(), ("скругления не построены", self.p.name)
 
@@ -415,37 +417,7 @@ def build():
     # стойка — одна деталь: лист 92 × 390 × 12 (крепится к стене), основание 128 × 92 × 20 под бутылку, ось O Ø10, направляющая
     # ползуна, нижний и верхний упоры;
     # начало — ось O на передней грани листа
-    p = Part("Стойка", "УКП.00.001", ST3, "#8a94a3")
-    p.box(X_ST0, X_ST1, Y_ST0, Y_ST0 + H_ST, -B_ST, 0)                # лист
-    p.box(X_ST0 - 18, X_ST1 + 18, Y_ST0 - 20, Y_ST0, -B_ST, -B_ST + 92)     # основание 128 × 92 × 20: задняя кромка заподлицо с листом
-                                                                      # (у стены), лист посередине по ширине, ось бутылки — по глубине
-    p.cyl(0, 0, 5.0, 0, 20.5)                                         # ось O Ø10 — до передней грани кулисы
-    for xa, xb in ((E - 18.5, E - 12.5), (E + 12.5, E + 18.5)):      # направляющая: планки у боковых граней ползуна
-        p.box(xa, xb, Y_BOT, Y_TOP, 26.0, 42.0)
-        p.box(xa, xb, Y_BOT, Y_BOT + 12.0, 0, 26.0)                   # кронштейны планок
-    p.poly([(LO_X0, LO_Y0), (LO_X1, LO_Y0), (LO_X1, lower_edge_y(PH_K, LO_X1)), (LO_X0, lower_edge_y(PH_K, LO_X0))],
-           0, 20.5, ("H", "V", None, "V"), (0, 1, 3))                  # нижний упор: грань по нижнему ребру кулисы при φк
-    p.poly([(HI_X0, upper_edge_y(PH_N, HI_X0)), (HI_X1, upper_edge_y(PH_N, HI_X1)), (HI_X1, HI_Y1), (HI_X0, HI_Y1)],
-           0, 20.5, (None, "V", "H", "V"), (1, 2, 3), fix=3)           # верхний упор: грань по верхнему ребру кулисы при φн
-    for x, y in WALL_HOLES:                                          # 4 отверстия Ø6 под шурупы: 8 мм от боковых краёв (шляпка не заходит под кожух); верхние — 10 от края, нижние — над рёбрами
-        p.hole(x, y, 3.0)
-    # рёбра жёсткости (косынки) 6 мм по краям листа: треугольник 50 × 50 между передней гранью листа и основанием. Клин
-    # выдавливается из эскиза на плоскости YOZ (эскиз: u = −z, v = −y; «прямое» направление — к −x) на всю ширину листа,
-    # затем середина вырезается — остаются рёбра x X_ST0…X_ST0+6 и X_ST1−6…X_ST1 (бутылка Ø60 между ними, зазор ≥ 8 мм)
-    tri = [(0.0, -Y_ST0), (-RIB, -Y_ST0), (0.0, -Y_ST0 - RIB)]     # (y, z): (Y_ST0, 0), (Y_ST0, RIB), (Y_ST0 + RIB, 0)
-    sk = p.sketch(0, lambda s: s.poly_fixed(tri), p.p.GetDefaultEntity(C3.o3d_planeYOZ))
-    ex = p.p.NewEntity(C3.o3d_bossExtrusion)
-    ed = ex.GetDefinition()
-    ed.directionType = C3.dtBoth
-    ed.SetSideParam(True, C3.etBlind, -X_ST0, 0, False)             # к −x до левой кромки листа
-    ed.SetSideParam(False, C3.etBlind, X_ST1, 0, False)             # к +x до правой кромки
-    ed.SetSketch(sk)
-    assert ex.Create(), "клин рёбер не построен"
-    p.extrude(p.sketch(0, lambda s: s.rect(X_ST0 + RIB_T, Y_ST0, X_ST1 - RIB_T, Y_ST0 + RIB + 1)), RIB + 1, cut=True)
-    # скругления R5: внутренний угол лист–основание между рёбрами и 4 вертикальных угла основания
-    p.fillet([((X_ST0 + X_ST1) / 2, Y_ST0, 0.0)] +
-             [(x, Y_ST0 - 10, z) for x in (X_ST0 - 18, X_ST1 + 18) for z in (-B_ST, -B_ST + 92)], R_FIL_ST)
-    mass["stand"] = p.save(FILES["stand"])[1]
+    mass["stand"] = build_stand()
 
     L, R_ = 500.0, 9.0                                                # кулиса: полоса 8 × 18 × 500 + ступица Ø16 × 12
     p = Part("Кулиса", "УКП.01.001", ST3, "#2d3540")
@@ -502,6 +474,41 @@ def build():
     json.dump(mass, open(os.path.join(HERE, "parts_mass.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
 
+def build_stand():
+    """стойка — одна деталь: лист, основание, ось O, направляющая, упоры, отверстия под шурупы, рёбра, скругления"""
+    p = Part("Стойка", "УКП.00.001", ST3, "#8a94a3")
+    p.box(X_ST0, X_ST1, Y_ST0, Y_ST0 + H_ST, -B_ST, 0)                # лист
+    p.box(X_ST0 - 18, X_ST1 + 18, Y_ST0 - 20, Y_ST0, -B_ST, -B_ST + 92)     # основание 128 × 92 × 20: задняя кромка заподлицо с листом
+                                                                      # (у стены), лист посередине по ширине, ось бутылки — по глубине
+    p.cyl(0, 0, 5.0, 0, 20.5)                                         # ось O Ø10 — до передней грани кулисы
+    for xa, xb in ((E - 18.5, E - 12.5), (E + 12.5, E + 18.5)):      # направляющая: планки у боковых граней ползуна
+        p.box(xa, xb, Y_BOT, Y_TOP, 26.0, 42.0)
+        p.box(xa, xb, Y_BOT, Y_BOT + 12.0, 0, 26.0)                   # кронштейны планок
+    p.poly([(LO_X0, LO_Y0), (LO_X1, LO_Y0), (LO_X1, lower_edge_y(PH_K, LO_X1)), (LO_X0, lower_edge_y(PH_K, LO_X0))],
+           0, 20.5, ("H", "V", None, "V"), (0, 1, 3))                  # нижний упор: грань по нижнему ребру кулисы при φк
+    p.poly([(HI_X0, upper_edge_y(PH_N, HI_X0)), (HI_X1, upper_edge_y(PH_N, HI_X1)), (HI_X1, HI_Y1), (HI_X0, HI_Y1)],
+           0, 20.5, (None, "V", "H", "V"), (1, 2, 3), fix=3)           # верхний упор: грань по верхнему ребру кулисы при φн
+    for x, y in WALL_HOLES:                                          # 4 отверстия Ø6 под шурупы: 8 мм от боковых краёв (шляпка не заходит под кожух); верхние — 10 от края, нижние — над рёбрами
+        p.hole(x, y, 3.0)
+    # рёбра жёсткости (косынки) 6 мм по краям листа: треугольник 50 × 50 между передней гранью листа и основанием. Клин
+    # выдавливается из эскиза на плоскости YOZ (эскиз: u = −z, v = −y; «прямое» направление — к −x) на всю ширину листа,
+    # затем середина вырезается — остаются рёбра x X_ST0…X_ST0+6 и X_ST1−6…X_ST1 (бутылка Ø60 между ними, зазор ≥ 8 мм)
+    tri = [(0.0, -Y_ST0), (-RIB, -Y_ST0), (0.0, -Y_ST0 - RIB)]     # (y, z): (Y_ST0, 0), (Y_ST0, RIB), (Y_ST0 + RIB, 0)
+    sk = p.sketch(0, lambda s: s.poly_fixed(tri), p.p.GetDefaultEntity(C3.o3d_planeYOZ))
+    ex = p.p.NewEntity(C3.o3d_bossExtrusion)
+    ed = ex.GetDefinition()
+    ed.directionType = C3.dtBoth
+    ed.SetSideParam(True, C3.etBlind, -X_ST0, 0, False)             # к −x до левой кромки листа
+    ed.SetSideParam(False, C3.etBlind, X_ST1, 0, False)             # к +x до правой кромки
+    ed.SetSketch(sk)
+    assert ex.Create(), "клин рёбер не построен"
+    p.cut(lambda s: s.rect(X_ST0 + RIB_T, Y_ST0, X_ST1 - RIB_T, Y_ST0 + RIB + 1), 0, RIB + 1)   # вырез z 0…51 (в обе стороны от середины — односторонний вырез уходит к −z)
+    # скругления R5: внутренний угол лист–основание между рёбрами и 4 вертикальных угла основания
+    p.fillet([((X_ST0 + X_ST1) / 2, Y_ST0, 0.0)] +
+             [(x, Y_ST0 - 10, z) for x in (X_ST0 - 18, X_ST1 + 18) for z in (-B_ST, -B_ST + 92)], R_FIL_ST)
+    return p.save(FILES["stand"])[1]
+
+
 PIN_COLOR = "#7fae6a"                             # палец D — отдельная деталь, свой цвет (как на рис. 13 расчёта)
 
 
@@ -525,11 +532,11 @@ def build_polzun():
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] and set(sys.argv[1:]) <= {"polzun", "pin"}:      # перестроить только эти детали, массы остальных — как были
+    if sys.argv[1:] and set(sys.argv[1:]) <= {"polzun", "pin", "stand"}:      # перестроить только эти детали, массы остальных — как были
         mj = os.path.join(HERE, "parts_mass.json")
         m = json.load(open(mj, encoding="utf-8"))
         for k in sys.argv[1:]:
-            m[k] = {"polzun": build_polzun, "pin": build_pin}[k]()
+            m[k] = {"polzun": build_polzun, "pin": build_pin, "stand": build_stand}[k]()
         json.dump(m, open(mj, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         # сопряжения сборки ссылаются на грани деталей; у перестроенной детали грани новые — старая сборка откроется с «!»
         print("ВАЖНО: закройте сборку без сохранения и пересоберите её: python kompas_assembly.py")
