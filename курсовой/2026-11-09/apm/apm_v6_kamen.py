@@ -25,16 +25,34 @@ def found(x, y, z, kind):
     return [o for o in (qi(q, A7.IModelObject) for q in (top.FindObjectsByPoint(x, y, z, True) or ())) if o.ModelObjectType == kind]
 
 
-# фаски на кромках отверстия: перед (z = 0) и зад перемычки (z = −4)
+# фаски на кромках отверстия. Задняя (z = −4) — операцией «Фаска»; передняя (z = 0) операцией «Фаска» не строится
+# (Create возвращает True, но грани нет, элемент с ошибкой) — поэтому вырезом вращения треугольника 0,5 × 0,5
 ch = p5.NewEntity(C3.o3d_chamfer)
 cd = ch.GetDefinition()
 cd.SetChamferParam(True, 0.5, 0.5)
 arr = cd.array()
-for z in (0.0, -4.0):
-    es = found(0.0, 5.0, z, C3.o3d_edge)
-    assert len({round(qi(e, A7.IEdge).GetLength(1), 4) for e in es}) == 1, (z, len(es))
-    arr.Add(A5.ksEntity(k5.TransferInterface(es[0], C.ksAPI5Auto, 0)))
-assert ch.Create(), "фаски не построены"
+es = found(0.0, 5.0, -4.0, C3.o3d_edge)
+assert len({round(qi(e, A7.IEdge).GetLength(1), 4) for e in es}) == 1, len(es)
+arr.Add(A5.ksEntity(k5.TransferInterface(es[0], C.ksAPI5Auto, 0)))
+assert ch.Create(), "задняя фаска не построена"
+from kompas_build import Sketch2D
+sk = p5.NewEntity(C3.o3d_sketch)
+sd = sk.GetDefinition()
+sd.SetPlane(p5.GetDefaultEntity(C3.o3d_planeXOZ))
+sk.Create()
+s2 = Sketch2D(sd.BeginEdit())
+s2.poly_fixed([(5.0, -0.1), (5.6, -0.1), (5.6, 0.0), (5.5, 0.0), (5.0, 0.5)])   # (u, v) = (r, −z)
+s2.axis(0.0, 2.0, 0.0, -2.0)
+sd.EndEdit()
+cut = p5.NewEntity(C3.o3d_cutRotated)
+cdr = cut.GetDefinition()
+cdr.directionType = C3.dtNormal
+cdr.SetSideParam(True, 360)
+cdr.SetSketch(sk)
+assert cut.Create(), "передняя фаска не вырезана"
+sk.hidden = True
+sk.Update()
+assert found(0.0, 5.25, -0.25, C3.o3d_face) and found(0.0, 5.25, -3.75, C3.o3d_face), "фаски не на месте"
 
 # стенка отверстия: разделить плоскостью XZ
 hole = found(0.0, 5.0, -2.0, C3.o3d_face)
