@@ -57,7 +57,7 @@ def prettify(path):
     d.Save()
 
 
-def picture(path_m3d, png, view=None):
+def picture(path_m3d, png, view=None, dpi=200):
     """изометрия (или свой ракурс), показать всё, PNG 200 dpi"""
     d = open_doc(path_m3d)
     d5 = A5.ksDocument3D(k5.TransferInterface(d, C.ksAPI5Auto, 0))
@@ -70,7 +70,7 @@ def picture(path_m3d, png, view=None):
     d5.ZoomPrevNextOrAll(C.ksZoomAll) if hasattr(C, "ksZoomAll") else d5.ZoomPrevNextOrAll(2)
     rp = d5.RasterFormatParam()
     rp.Init()
-    rp.format, rp.colorType, rp.extResolution, rp.extScale, rp.onlyThinLine = C.ksRasterFormatPNG, 3, 200, 1.0, False
+    rp.format, rp.colorType, rp.extResolution, rp.extScale, rp.onlyThinLine = C.ksRasterFormatPNG, 3, dpi, 1.0, False
     assert d5.SaveAsToRasterFormat(png, rp), png
     print("  картинка:", os.path.relpath(png, HERE))
 
