@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Укупориватель — сборка с нуля</title>
+<style>
+:root {
+  --paper: #f6f3ec;
+  --card: #fffdf8;
+  --ink: #1f2328;
+  --ink-2: #4a5059;
+  --rule: #ddd6c8;
+  --amber: #ffb000;
+  --amber-deep: #8a5a00;
+  --amber-soft: #fff2cc;
+  --steel: #59626e;
+  --ok: #2f6b3a;
+  --ok-soft: #e4f1e3;
+  --warn: #9a3412;
+  --warn-soft: #fde8de;
+  --mono: Consolas, "Cascadia Mono", "Courier New", monospace;
+  --head: Bahnschrift, "DIN Alternate", "Arial Narrow", "Segoe UI", sans-serif;
+  --body: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 16px/1.6 var(--body);
+}
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top {
+  background: var(--ink); color: #f6f3ec; padding-block: 40px 32px;
+  border-bottom: 6px solid var(--amber);
+}
+header.top .kicker { font: 600 13px/1 var(--head); letter-spacing: .14em; text-transform: uppercase; color: var(--amber); }
+header.top h1 { font: 700 clamp(30px, 5vw, 46px)/1.1 var(--head); margin: 12px 0 14px; text-wrap: balance; }
+header.top p { max-width: 62ch; margin: 0; color: #d9d4c8; font-size: 17px; }
+header.top .meta { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px 18px; font: 14px/1.4 var(--head); color: #bdb7aa; }
+header.top .meta b { color: #f6f3ec; font-weight: 600; }
+
+nav.toc { position: sticky; top: 0; z-index: 5; background: rgba(246,243,236,.96); border-bottom: 1px solid var(--rule); backdrop-filter: blur(4px); }
+nav.toc .wrap { display: flex; gap: 6px; overflow-x: auto; padding-block: 10px; scrollbar-width: thin; }
+nav.toc a { flex: none; font: 600 14px/1 var(--head); color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--rule); background: var(--card); white-space: nowrap; }
+nav.toc a:hover { border-color: var(--amber); color: var(--ink); }
+
+section { padding-block: 44px 8px; }
+h2 { font: 700 30px/1.15 var(--head); margin: 0 0 6px; text-wrap: balance; }
+h2 .n { color: var(--amber-deep); margin-right: 10px; }
+h3 { font: 700 20px/1.25 var(--head); margin: 26px 0 8px; }
+.lead { color: var(--ink-2); max-width: 68ch; margin: 0 0 20px; font-size: 17px; }
+p, li { max-width: 70ch; }
+b, strong { font-weight: 650; }
+.term { font-weight: 650; border-bottom: 2px solid var(--amber); }
+
+figure { margin: 0; background: #fff; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+[hidden] { display: none !important; }
+figure img { display: block; width: 100%; height: auto; max-height: 560px; object-fit: contain; cursor: zoom-in; background: #fff; }
+figcaption { font-size: 14px; color: var(--ink-2); padding: 10px 14px; border-top: 1px solid var(--rule); background: var(--card); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; align-items: start; }
+.grid2 > * { min-width: 0; }
+.hero-fig img { max-height: 640px; }
+
+.callout { border-radius: 10px; padding: 14px 16px; margin: 14px 0; border: 1px solid; max-width: 74ch; }
+.callout p { margin: 0; }
+.callout p + p { margin-top: 6px; }
+.callout .t { font: 700 13px/1 var(--head); letter-spacing: .1em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+.check { background: var(--ok-soft); border-color: #b9d8b6; }
+.check .t { color: var(--ok); }
+.warn { background: var(--warn-soft); border-color: #f2c2ad; }
+.warn .t { color: var(--warn); }
+.tip { background: var(--amber-soft); border-color: #f0d68a; }
+.tip .t { color: var(--amber-deep); }
+
+/* глоссарий */
+dl.gloss { display: grid; grid-template-columns: minmax(120px, 190px) 1fr; gap: 10px 18px; margin: 0; max-width: 820px; }
+dl.gloss dt { font: 700 16px/1.4 var(--head); }
+dl.gloss dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 560px) { dl.gloss { grid-template-columns: 1fr; gap: 2px; } dl.gloss dd { margin-bottom: 10px; } }
+
+/* детали */
+.parts { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.part { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+.part .ph { background: #fff; height: 170px; display: flex; align-items: center; justify-content: center; padding: 10px; border-bottom: 1px solid var(--rule); }
+.part .ph img { max-width: 100%; max-height: 150px; object-fit: contain; cursor: zoom-in; }
+.part .bd { padding: 12px 14px 14px; }
+.part .nm { font: 700 18px/1.2 var(--head); display: flex; gap: 8px; align-items: baseline; }
+.part .nm .no { background: var(--ink); color: var(--paper); font-size: 13px; border-radius: 5px; padding: 3px 7px; }
+.part .file { font: 12.5px/1.3 var(--mono); color: var(--steel); margin: 6px 0; word-break: break-word; }
+.part p { margin: 0; font-size: 14.5px; color: var(--ink-2); }
+
+table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--card); }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+th { font: 700 14px/1.3 var(--head); letter-spacing: .02em; background: #efe9dc; }
+.tbl { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; }
+.tbl table { min-width: 620px; }
+
+ul.list, ol.list { padding-left: 22px; margin: 8px 0; }
+ul.list li, ol.list li { margin: 5px 0; }
+.kit { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.kit > div { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.kit h3 { margin-top: 0; }
+
+/* шаги */
+.progress { position: sticky; top: 52px; z-index: 4; background: var(--paper); padding-block: 8px; }
+.bar { height: 8px; border-radius: 99px; background: #e5ded0; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--amber); transition: width .25s; }
+.progress small { font: 600 13px/1 var(--head); color: var(--ink-2); display: block; margin-top: 6px; }
+.step { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 22px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 20px; margin: 18px 0; scroll-margin-top: 110px; }
+.step.done { border-color: #b9d8b6; box-shadow: inset 6px 0 0 #7fbf7a; }
+.step .num { font: 700 15px/1 var(--head); color: var(--amber-deep); letter-spacing: .1em; text-transform: uppercase; }
+.step h3 { margin: 6px 0 10px; font-size: 23px; }
+.step ol { padding-left: 22px; margin: 6px 0 0; }
+.step ol li { margin: 7px 0; }
+.step .figs { display: grid; gap: 12px; align-content: start; }
+.step label.done-box { display: inline-flex; gap: 10px; align-items: center; margin-top: 14px; font: 600 15px/1.2 var(--head); cursor: pointer; user-select: none; padding: 9px 14px; border: 1px solid var(--rule); border-radius: 8px; background: #fff; }
+.step label.done-box input { width: 20px; height: 20px; accent-color: var(--ok); }
+@media (max-width: 760px) { .step { grid-template-columns: 1fr; } .step .figs { order: -1; } }
+
+.hl { background: linear-gradient(transparent 55%, #ffd76a 55%); padding: 0 2px; }
+.swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; border: 1px solid rgba(0,0,0,.25); margin-right: 4px; }
+kbd { font: 13px var(--mono); background: #fff; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; }
+
+footer { margin-top: 50px; padding-block: 26px 40px; border-top: 1px solid var(--rule); color: var(--ink-2); font-size: 14px; }
+
+/* увеличение картинки */
+#zoom { position: fixed; inset: 0; background: rgba(20,22,26,.92); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; cursor: zoom-out; }
+#zoom img { max-width: 100%; max-height: 100%; background: #fff; border-radius: 8px; }
+svg.scheme { width: 100%; height: auto; display: block; background: #fff; }
+@media print {
+  nav.toc, .progress, label.done-box { display: none !important; }
+  .step { break-inside: avoid; }
+  body { background: #fff; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="kicker">Инструкция по сборке · УКП.00.000</div>
+    <h1>Ручной укупориватель бутылок: как напечатать и собрать с нуля</h1>
+    <p>Эта инструкция рассчитана на человека, который видит механизм впервые. Сначала — что это за устройство и как оно работает, потом — что напечатать, как подготовить детали и как собрать их по шагам. На каждой картинке шага <span class="hl">новая деталь подсвечена жёлтым</span>.</p>
+    <div class="meta"><span><b>8</b> печатных деталей</span><span><b>8</b> шагов сборки</span><span>время сборки ≈ <b>20 минут</b> (без печати)</span><span>ход колокола — <b>16 мм</b></span></div>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+  <a href="#what">1. Что это</a><a href="#how">2. Как работает</a><a href="#parts">3. Детали</a><a href="#kit">4. Инструменты</a>
+  <a href="#print">5. Печать</a><a href="#prep">6. Подготовка</a><a href="#steps">7. Сборка</a><a href="#use">8. Работа</a><a href="#trouble">9. Если не так</a>
+</div></nav>
+
+<main class="wrap">
+
+<section id="what">
+  <h2><span class="n">1</span>Что это за устройство</h2>
+  <p class="lead">Укупориватель надевает на горлышко бутылки металлическую пробку-колпачок (кронен-пробку, как на стеклянных бутылках лимонада) и обжимает её края, чтобы пробка держалась плотно. Вы ставите бутылку на подставку, кладёте пробку на горлышко и нажимаете на длинную рукоять — сверху на пробку опускается «колокол» и обжимает её.</p>
+  <div class="grid2">
+    <figure class="hero-fig"><img src="{{img:00_общий_вид}}" alt="Укупориватель в сборе, с кожухом"><figcaption>Так выглядит собранный укупориватель. Красная коробка — защитный кожух, под ним спрятан механизм.</figcaption></figure>
+    <figure class="hero-fig"><img src="{{img:01_без_кожуха}}" alt="Укупориватель без кожуха"><figcaption>То же без кожуха: видно, как длинная рукоять соединена с вертикальным ползуном, на конце которого колокол.</figcaption></figure>
+  </div>
+  <h3>Словарь: как называются части</h3>
+  <dl class="gloss">
+    <dt>Стойка</dt><dd>Основа всего устройства <span class="swatch" style="background:#8a94a3"></span>серого цвета: вертикальный лист, широкое основание (на него ставится бутылка) и два косых ребра для жёсткости. На стойке уже есть всё неподвижное: ось O, направляющая и два упора.</dd>
+    <dt>Ось O</dt><dd>Круглый штырь Ø10 мм, торчащий из листа стойки вверху. На него надевается рукоять и поворачивается вокруг него.</dd>
+    <dt>Кулиса</dt><dd>Длинная <span class="swatch" style="background:#2d3540"></span>тёмная рукоять (рычаг) длиной 509 мм. На одном конце — отверстие под ось O, по длине — овальные вырезы для облегчения.</dd>
+    <dt>Камень</dt><dd>Маленькая <span class="swatch" style="background:#e8c99a"></span>бежевая рамка 20 × 27 мм. Надевается на кулису и может скользить вдоль неё.</dd>
+    <dt>Палец</dt><dd>Короткий <span class="swatch" style="background:#7fae6a"></span>зелёный штырь Ø10 мм с резьбой М8 на конце. Одним концом сидит в камне, на другой надевается ползун.</dd>
+    <dt>Ползун</dt><dd>Вертикальная <span class="swatch" style="background:#3a4049"></span>тёмная деталь: сверху брусок с отверстием под палец, внизу — колокол, который обжимает пробку.</dd>
+    <dt>Направляющая</dt><dd>Две вертикальные планки на стойке. Брусок ползуна ходит между ними строго вверх-вниз.</dd>
+    <dt>Упоры</dt><dd>Два выступа на стойке, верхний и нижний. Они ограничивают, насколько можно поднять и опустить рукоять.</dd>
+    <dt>Шайба и гайка</dt><dd>Стандартные М8: держат ползун на пальце, чтобы он не соскочил.</dd>
+    <dt>Кожух</dt><dd><span class="swatch" style="background:#b03a2e"></span>Красная защитная коробка. Надевается спереди и закрывает механизм, чтобы туда не попали пальцы.</dd>
+  </dl>
+</section>
+
+<section id="how">
+  <h2><span class="n">2</span>Как он работает</h2>
+  <p class="lead">Это <b>тангенсный механизм</b>: рукоять поворачивается, а колокол движется строго вертикально. Разобраться в нём стоит до сборки — тогда понятно, зачем каждая деталь.</p>
+  <div class="grid2">
+    <div>
+      <ol class="list">
+        <li>Вы нажимаете на конец рукояти — <span class="term">кулиса</span> поворачивается вокруг <span class="term">оси O</span>.</li>
+        <li>На кулисе сидит <span class="term">камень</span>. Он не может уйти вбок: его через <span class="term">палец</span> держит <span class="term">ползун</span>, а ползун зажат между планками <span class="term">направляющей</span>. Поэтому, когда кулиса поворачивается, камень скользит вдоль неё и одновременно опускается.</li>
+        <li>Камень тянет за собой палец, а палец — ползун. Ползун едет вниз по направляющей, и <b>колокол на его нижнем конце опускается на 16 мм</b>.</li>
+        <li>Внутри колокола — конус. Опускаясь, он надвигается на края пробки и обжимает их вокруг горлышка.</li>
+        <li>Рукоять ходит между двумя упорами: верхний не даёт поднять её выше 59,5°, нижний не даёт опустить ниже 22,7°.</li>
+      </ol>
+      <div class="callout tip"><span class="t">Почему рукоять такая длинная</span><p>Чем дальше от оси вы давите, тем меньше нужно усилие. Чтобы обжать пробку, на колокол нужно около 1,9 кН (≈ 190 кгс), а на конец рукояти достаточно давить с силой не больше 110 Н (≈ 11 кгс) — как поднять ведро воды.</p></div>
+    </div>
+    <figure>
+      <svg class="scheme" viewBox="0 0 420 300" role="img" aria-label="Схема тангенсного механизма">
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a5a00"/></marker></defs>
+        <rect x="18" y="20" width="16" height="262" fill="#c9cfd6" stroke="#59626e"/>
+        <text x="26" y="292" font-size="12" text-anchor="middle" fill="#4a5059" font-family="Segoe UI, Arial">стойка</text>
+        <rect x="120" y="40" width="8" height="190" fill="#c9cfd6" stroke="#59626e"/>
+        <rect x="168" y="40" width="8" height="190" fill="#c9cfd6" stroke="#59626e"/>
+        <text x="148" y="32" font-size="12" text-anchor="middle" fill="#4a5059" font-family="Segoe UI, Arial">направляющая</text>
+        <line x1="60" y1="150" x2="400" y2="40" stroke="#2d3540" stroke-width="16" stroke-linecap="round"/>
+        <circle cx="60" cy="150" r="7" fill="#fff" stroke="#1f2328" stroke-width="2"/>
+        <text x="58" y="182" font-size="13" text-anchor="middle" fill="#1f2328" font-family="Segoe UI, Arial" font-weight="700">ось O</text>
+        <rect x="132" y="112" width="32" height="24" fill="#e8c99a" stroke="#1f2328" transform="rotate(-18 148 124)"/>
+        <circle cx="148" cy="124" r="5" fill="#7fae6a" stroke="#1f2328"/>
+        <rect x="132" y="138" width="32" height="12" fill="#3a4049"/>
+        <rect x="144" y="150" width="8" height="70" fill="#3a4049"/>
+        <path d="M128 220 h40 v26 h-40 z" fill="#3a4049"/>
+        <text x="190" y="252" font-size="13" fill="#1f2328" font-family="Segoe UI, Arial">колокол</text>
+        <text x="200" y="128" font-size="13" fill="#1f2328" font-family="Segoe UI, Arial">камень + палец</text>
+        <text x="300" y="98" font-size="13" fill="#1f2328" font-family="Segoe UI, Arial">кулиса (рукоять)</text>
+        <path d="M392 60 q8 40 -4 70" fill="none" stroke="#8a5a00" stroke-width="3" marker-end="url(#ar)"/>
+        <text x="340" y="150" font-size="12" fill="#8a5a00" font-family="Segoe UI, Arial">нажимаете</text>
+        <path d="M100 205 v40" stroke="#8a5a00" stroke-width="3" marker-end="url(#ar)"/>
+        <text x="96" y="268" font-size="12" text-anchor="end" fill="#8a5a00" font-family="Segoe UI, Arial">16 мм вниз</text>
+      </svg>
+      <figcaption>Упрощённая схема, вид спереди. Рукоять поворачивается, камень скользит по ней, ползун идёт вертикально.</figcaption>
+    </figure>
+  </div>
+  <div class="grid2" style="margin-top:18px">
+    <figure><img src="{{img:02_рукоять_вверху}}" alt="Рукоять поднята до верхнего упора"><figcaption><b>Рукоять поднята</b> до верхнего упора — колокол в верхнем положении, под него можно поставить бутылку.</figcaption></figure>
+    <figure><img src="{{img:03_рукоять_внизу}}" alt="Рукоять опущена до нижнего упора"><figcaption><b>Рукоять опущена</b> до нижнего упора — колокол опустился на 16 мм и обжал пробку.</figcaption></figure>
+  </div>
+</section>
+
+<section id="parts">
+  <h2><span class="n">3</span>Детали: что печатать</h2>
+  <p class="lead">Все детали лежат в папке <b>«Детали для печати»</b> рядом с этой инструкцией — по одному файлу <b>.stl</b> на деталь. Каждую деталь печатают в одном экземпляре. Бутылка в комплект не входит.</p>
+  <div class="parts">
+    <div class="part"><div class="ph"><img src="{{img:p_stand}}" alt="Стойка"></div><div class="bd"><div class="nm"><span class="no">1</span>Стойка</div><div class="file">1 Стойка.stl · 128 × 410 × 92 мм</div><p>Основа. Уже несёт ось O, направляющую, оба упора и 4 отверстия под шурупы.</p></div></div>
+    <div class="part"><div class="ph"><img src="{{img:p_kulisa}}" alt="Кулиса"></div><div class="bd"><div class="nm"><span class="no">2</span>Кулиса (рукоять)</div><div class="file">2 Кулиса (рукоять).stl · 509 × 18 × 20 мм</div><p>Рычаг. Отверстие Ø10 на конце с выступом-втулкой — под ось O.</p></div></div>
+    <div class="part"><div class="ph"><img src="{{img:p_kamen}}" alt="Камень"></div><div class="bd"><div class="nm"><span class="no">3</span>Камень</div><div class="file">3 Камень.stl · 20 × 27 × 15,5 мм</div><p>Рамка, скользящая по кулисе. В передней стенке — отверстие под палец.</p></div></div>
+    <div class="part"><div class="ph"><img src="{{img:p_pin}}" alt="Палец"></div><div class="bd"><div class="nm"><span class="no">4</span>Палец</div><div class="file">4 Палец.stl · Ø10 × 32 мм</div><p>Гладкая часть Ø10, уступ и конец Ø8 под резьбу М8.</p></div></div>
+    <div class="part"><div class="ph"><img src="{{img:p_polzun}}" alt="Ползун"></div><div class="bd"><div class="nm"><span class="no">5</span>Ползун</div><div class="file">5 Ползун.stl · 40 × 137 × 40 мм</div><p>Брусок с отверстием Ø10, шток и колокол с конусом внутри.</p></div></div>
+    <div class="part"><div class="ph"><img src="{{img:p_washer}}" alt="Шайба"></div><div class="bd"><div class="nm"><span class="no">6</span>Шайба 8</div><div class="file">6 Шайба.stl · Ø16 × 1,6 мм</div><p>Лучше купить стальную шайбу 8 (ГОСТ 11371) — стоит копейки.</p></div></div>
+    <div class="part"><div class="ph"><img src="{{img:p_nut}}" alt="Гайка"></div><div class="bd"><div class="nm"><span class="no">7</span>Гайка М8</div><div class="file">7 Гайка.stl · под ключ 13</div><p>Лучше купить стальную гайку М8. В файле резьбы нет — см. раздел 6.</p></div></div>
+    <div class="part"><div class="ph"><img src="{{img:p_cover}}" alt="Кожух"></div><div class="bd"><div class="nm"><span class="no">8</span>Кожух</div><div class="file">8 Кожух.stl · 57,5 × 115 × 58 мм</div><p>Защитная коробка, открытая сзади. Пазы — под рукоять и под шток ползуна.</p></div></div>
+  </div>
+</section>
+
+<section id="kit">
+  <h2><span class="n">4</span>Что ещё понадобится</h2>
+  <div class="kit">
+    <div><h3>Покупное</h3><ul class="list">
+      <li>Гайка М8 и шайба 8 — если не печатаете их (рекомендуется).</li>
+      <li>4 шурупа Ø5 × 50 мм и дюбели — если крепите стойку к стене.</li>
+      <li>Кронен-пробки и бутылки — для работы.</li>
+    </ul></div>
+    <div><h3>Инструменты</h3><ul class="list">
+      <li>Сверло Ø10 мм (можно вращать рукой или дрелью на малых оборотах).</li>
+      <li>Плашка М8 с плашкодержателем — нарезать резьбу на пальце.</li>
+      <li>Метчик М8 — только если печатаете гайку.</li>
+      <li>Гаечный ключ на 13.</li>
+      <li>Наждачная бумага (зерно 180–240), канцелярский нож или надфиль.</li>
+      <li>Суперклей — на случай, если палец сидит в камне свободно.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section id="print">
+  <h2><span class="n">5</span>Печать</h2>
+  <p class="lead">Откройте файлы .stl в своей программе для печати (Cura, PrusaSlicer, Bambu Studio и т. п.), разверните каждую деталь, как указано в таблице, и нарежьте с настройками ниже.</p>
+  <div class="tbl"><table>
+    <tr><th>Параметр</th><th>Значение</th><th>Зачем</th></tr>
+    <tr><td>Материал</td><td>PETG (лучше) или PLA</td><td>PETG менее хрупкий — рукоять и палец работают на изгиб.</td></tr>
+    <tr><td>Слой / сопло</td><td>0,2 мм / 0,4 мм</td><td>Обычные настройки, точности хватает.</td></tr>
+    <tr><td>Стенки (периметры)</td><td>4–5</td><td>Прочность определяется стенками, а не заполнением.</td></tr>
+    <tr><td>Заполнение</td><td>палец, камень, шайба, гайка — <b>100 %</b>; кулиса, ползун — <b>60 %</b>; стойка, кожух — <b>30–40 %</b></td><td>Самые нагруженные — мелкие детали узла «камень — палец — ползун».</td></tr>
+  </table></div>
+  <h3>Как класть детали на стол принтера</h3>
+  <div class="tbl"><table>
+    <tr><th>Деталь</th><th>Положение на столе</th><th>Поддержки</th></tr>
+    <tr><td>1 Стойка</td><td>Задней плоской стороной листа вниз (той, что прилегает к стене) — основание и рёбра смотрят вверх.</td><td>Нужны — под планки направляющей и упоры.</td></tr>
+    <tr><td>2 Кулиса</td><td>Плашмя, гладкой лицевой стороной вниз (выступ-втулка у отверстия — вверх).</td><td>Не нужны.</td></tr>
+    <tr><td>3 Камень</td><td>Стенкой с отверстием вниз, отверстие вертикально.</td><td>Не нужны (окно перекрывается мостиком).</td></tr>
+    <tr><td>4 Палец</td><td>Стоя, широким концом Ø10 вниз, резьбовым концом вверх.</td><td>Не нужны. Включите «кайму» (brim) — деталь маленькая.</td></tr>
+    <tr><td>5 Ползун</td><td>Стоя, колоколом вниз.</td><td>Нужны — внутри колокола.</td></tr>
+    <tr><td>6, 7 Шайба, гайка</td><td>Плашмя.</td><td>Не нужны.</td></tr>
+    <tr><td>8 Кожух</td><td>Передней (глухой) стенкой вниз, открытой стороной вверх.</td><td>Не нужны.</td></tr>
+  </table></div>
+  <div class="callout warn"><span class="t">Размер принтера</span><p>Кулиса длиной 509 мм и стойка высотой 410 мм — крупные детали. Кулиса помещается по диагонали стола 400 × 400 мм, стойка — на стол длиной от 420 мм. Если стол меньше, разрежьте деталь в программе для печати на две части (функция «Разрезать»/«Cut») и склейте их после печати.</p></div>
+  <div class="callout tip"><span class="t">Пластик и сталь</span><p>По проекту кулиса, ползун и стойка — стальные (Ст3), камень — сталь 45, палец — сталь 40Х, кожух — АБС-пластик. Напечатанный из пластика укупориватель — действующая модель: он показывает работу механизма, но на полное усилие обжима (≈ 1,9 кН) не рассчитан. Нажимайте плавно, без рывков.</p></div>
+</section>
+
+<section id="prep">
+  <h2><span class="n">6</span>Подготовка деталей после печати</h2>
+  <p class="lead">Принтер делает отверстия чуть меньше, а валы чуть толще, чем в модели. В модели все посадки Ø10 «впритык», поэтому их нужно довести вручную. Это займёт 10 минут и сильно упростит сборку.</p>
+  <ol class="list">
+    <li><b>Уберите поддержки и наплывы.</b> Особенно внимательно — внутри окна камня, на гранях бруска ползуна и на оси O.</li>
+    <li><b>Прогоните сверлом Ø10</b> отверстие на конце кулисы и отверстие в бруске ползуна. Кулиса должна свободно проворачиваться на оси O, ползун — свободно надеваться на палец.</li>
+    <li><b>Отверстие в камне не рассверливайте.</b> Палец должен сидеть в нём туго. Если палец не входит — слегка зашкурьте его гладкий конец; если болтается — потом посадите его на каплю суперклея.</li>
+    <li><b>Нарежьте резьбу М8</b> плашкой на тонком конце пальца (Ø8, 10,5 мм до уступа). Ведите плашку ровно, полуоборот вперёд — четверть назад. В файле резьба не нарисована: в модели КОМПАС она условная.</li>
+    <li><b>Гайка:</b> лучше купить стальную М8. Если печатали — прогоните в ней резьбу метчиком М8.</li>
+    <li><b>Проверьте ход:</b> брусок ползуна должен входить между планками направляющей стойки (зазор по 0,5 мм с каждой стороны). Если трёт — зашкурьте боковые грани бруска.</li>
+    <li><b>Проверьте камень:</b> он должен надеваться на кулису и скользить по ней без заеданий (зазор 0,5 мм).</li>
+  </ol>
+</section>
+
+<section id="steps">
+  <h2><span class="n">7</span>Сборка по шагам</h2>
+  <p class="lead">Собирайте по порядку — каждый следующий шаг опирается на предыдущий. Отмечайте выполненные шаги галочкой, полоска покажет, сколько осталось.</p>
+  <div class="progress"><div class="bar"><i id="barfill"></i></div><small id="bartext">Выполнено 0 из 8</small></div>
+
+  <article class="step" id="s1">
+    <div>
+      <div class="num">Шаг 1 из 8</div>
+      <h3>Поставьте стойку</h3>
+      <ol>
+        <li>Поставьте стойку основанием на стол: лист вертикально, его гладкая задняя сторона — к стене, планки и штырь — к вам.</li>
+        <li>Найдите на ней: штырь <b>оси O</b> вверху слева, две вертикальные планки <b>направляющей</b> правее, <b>верхний упор</b> (наверху, над осью) и <b>нижний упор</b> (правее и чуть ниже оси).</li>
+        <li>Лучше сразу прикрутить стойку к стене 4 шурупами через отверстия Ø6 в листе: при нажатии на длинную рукоять стойку тянет вперёд. Если не крепите — придерживайте основание рукой.</li>
+      </ol>
+      <div class="callout check"><span class="t">Проверьте</span><p>Стойка стоит устойчиво, ось O торчит вперёд, к вам.</p></div>
+      <label class="done-box"><input type="checkbox" data-step="1"> Шаг выполнен</label>
+    </div>
+    <div class="figs"><figure><img src="{{img:10_стойка}}" alt="Стойка"><figcaption>Стойка: лист, основание, рёбра; вверху — ось O, направляющая и упоры.</figcaption></figure></div>
+  </article>
+
+  <article class="step" id="s2">
+    <div>
+      <div class="num">Шаг 2 из 8</div>
+      <h3>Вставьте палец в камень</h3>
+      <ol>
+        <li>Возьмите камень. Найдите стенку с круглым отверстием Ø10 — это его <b>передняя стенка</b>.</li>
+        <li>Вставьте палец в это отверстие <b>снаружи, гладким широким концом</b> (резьба остаётся снаружи, смотрит от камня).</li>
+        <li>Вдавите палец до тех пор, пока его торец не станет <b>вровень с внутренней стороной стенки</b>. Если туго — подожмите в тисках через деревянную прокладку.</li>
+      </ol>
+      <div class="callout warn"><span class="t">Важно</span><p>Палец не должен торчать внутрь окна камня — иначе в шаге 3 кулиса не пройдёт через камень.</p></div>
+      <div class="callout check"><span class="t">Проверьте</span><p>Палец сидит туго и не качается. Если болтается — выньте, капните суперклей и вставьте снова.</p></div>
+      <label class="done-box"><input type="checkbox" data-step="2"> Шаг выполнен</label>
+    </div>
+    <div class="figs"><figure><img src="{{img:11_палец_в_камень}}" alt="Палец в камне"><figcaption>Палец (жёлтый) вставлен в переднюю стенку камня, резьбовой конец снаружи.</figcaption></figure></div>
+  </article>
+
+  <article class="step" id="s3">
+    <div>
+      <div class="num">Шаг 3 из 8</div>
+      <h3>Наденьте камень на кулису</h3>
+      <ol>
+        <li>Положите кулису <b>выступом-втулкой у отверстия вниз</b> (к столу).</li>
+        <li>Поверните камень так, чтобы <b>палец смотрел вверх</b>, от стола, то есть в сторону, противоположную втулке.</li>
+        <li>Наденьте камень на кулису <b>с дальнего конца рукояти</b> (без отверстия) и сдвиньте его примерно на середину. С конца у отверстия камень не наденется — мешает втулка.</li>
+        <li>Подвигайте камень вдоль кулисы: он должен скользить свободно.</li>
+      </ol>
+      <div class="callout check"><span class="t">Проверьте</span><p>Палец и втулка кулисы смотрят в <b>разные</b> стороны. Камень скользит по всей длине без заеданий.</p></div>
+      <label class="done-box"><input type="checkbox" data-step="3"> Шаг выполнен</label>
+    </div>
+    <div class="figs"><figure><img src="{{img:12_камень_на_кулису}}" alt="Камень на кулисе"><figcaption>Камень с пальцем (жёлтые) надет на кулису.</figcaption></figure></div>
+  </article>
+
+  <article class="step" id="s4">
+    <div>
+      <div class="num">Шаг 4 из 8</div>
+      <h3>Наденьте кулису на ось O</h3>
+      <ol>
+        <li>Возьмите кулису с камнем. Втулка — к стойке, палец — к вам.</li>
+        <li>Наденьте отверстие кулисы на ось O и сдвиньте <b>до упора</b> к листу стойки.</li>
+        <li>Рукоять должна уходить <b>вправо-вверх</b> и проходить между верхним и нижним упорами.</li>
+        <li>Сдвиньте камень по кулисе так, чтобы палец оказался <b>между планками направляющей</b>.</li>
+      </ol>
+      <div class="callout warn"><span class="t">Придерживайте</span><p>До шага 8 кулису на оси ничего не держит — она может соскользнуть к вам. От этого её удерживает кожух.</p></div>
+      <div class="callout check"><span class="t">Проверьте</span><p>Рукоять поворачивается на оси от верхнего упора до нижнего.</p></div>
+      <label class="done-box"><input type="checkbox" data-step="4"> Шаг выполнен</label>
+    </div>
+    <div class="figs"><figure><img src="{{img:13_кулиса_на_ось}}" alt="Кулиса на оси"><figcaption>Кулиса с камнем и пальцем (жёлтые) надета на ось O и лежит между упорами.</figcaption></figure></div>
+  </article>
+
+  <article class="step" id="s5">
+    <div>
+      <div class="num">Шаг 5 из 8</div>
+      <h3>Установите ползун</h3>
+      <ol>
+        <li>Возьмите ползун <b>колоколом вниз</b>.</li>
+        <li>Поднесите его спереди и вставьте брусок <b>между планками направляющей</b>, одновременно надевая отверстие бруска на палец.</li>
+        <li>Если отверстие не совпадает с пальцем — чуть поверните рукоять: палец пойдёт вверх или вниз.</li>
+        <li>Сдвиньте ползун по пальцу до камня (останется зазор около 1 мм).</li>
+      </ol>
+      <div class="callout check"><span class="t">Проверьте</span><p>Ползун стоит вертикально, колокол внизу. Если поводить рукоятью, ползун ходит вверх-вниз между планками.</p></div>
+      <label class="done-box"><input type="checkbox" data-step="5"> Шаг выполнен</label>
+    </div>
+    <div class="figs"><figure><img src="{{img:14_ползун}}" alt="Ползун на пальце"><figcaption>Ползун (жёлтый) надет на палец и стоит между планками направляющей.</figcaption></figure></div>
+  </article>
+
+  <article class="step" id="s6">
+    <div>
+      <div class="num">Шаг 6 из 8</div>
+      <h3>Закрепите ползун шайбой и гайкой</h3>
+      <ol>
+        <li>Наденьте шайбу на резьбовой конец пальца.</li>
+        <li>Накрутите гайку рукой, потом затяните ключом на 13.</li>
+        <li>Затягивайте <b>до упора</b>: шайба прижимается к уступу пальца, а не к ползуну, поэтому ползун не зажимается — между шайбой и ползуном остаётся около 0,5 мм.</li>
+      </ol>
+      <div class="callout check"><span class="t">Проверьте</span><p>Ползун немного качается на пальце вперёд-назад (это нормально) и не может с него слететь.</p></div>
+      <label class="done-box"><input type="checkbox" data-step="6"> Шаг выполнен</label>
+    </div>
+    <div class="figs"><figure><img src="{{img:15_шайба_гайка}}" alt="Шайба и гайка"><figcaption>Шайба и гайка (жёлтые) на конце пальца.</figcaption></figure></div>
+  </article>
+
+  <article class="step" id="s7">
+    <div>
+      <div class="num">Шаг 7 из 8</div>
+      <h3>Проверьте ход механизма</h3>
+      <ol>
+        <li>Поднимите рукоять до верхнего упора — ползун поднимется.</li>
+        <li>Плавно опустите до нижнего упора — ползун опустится на 16 мм.</li>
+        <li>Повторите несколько раз. Движение должно быть плавным, без щелчков и заеданий.</li>
+      </ol>
+      <div class="callout tip"><span class="t">Если туго</span><p>Найдите, где трёт: кулиса на оси (прогоните отверстие сверлом), брусок ползуна в планках (зашкурьте бока) или камень на кулисе (зашкурьте окно). Подробнее — в разделе 9.</p></div>
+      <label class="done-box"><input type="checkbox" data-step="7"> Шаг выполнен</label>
+    </div>
+    <div class="figs"><figure><img src="{{img:02_рукоять_вверху}}" alt="Рукоять вверху"><figcaption>Верхнее положение рукояти.</figcaption></figure><figure><img src="{{img:03_рукоять_внизу}}" alt="Рукоять внизу"><figcaption>Нижнее положение — ползун ниже на 16 мм.</figcaption></figure></div>
+  </article>
+
+  <article class="step" id="s8">
+    <div>
+      <div class="num">Шаг 8 из 8</div>
+      <h3>Наденьте кожух</h3>
+      <ol>
+        <li>Поставьте рукоять примерно посередине хода.</li>
+        <li>Поднесите кожух спереди открытой стороной к стойке. Паз в правой и верхней стенках должен прийтись <b>на рукоять</b>, паз в дне — <b>на шток ползуна</b>.</li>
+        <li>Задвиньте кожух назад до упора в лист стойки. Верхняя стенка ляжет <b>на верхний упор</b>, утолщение внизу левой стенки поедет <b>вдоль планки направляющей</b>.</li>
+      </ol>
+      <div class="callout check"><span class="t">Проверьте</span><p>Кожух прижат к стойке и не болтается. Рукоять ходит от упора до упора и не задевает края паза (зазор 1 мм).</p></div>
+      <label class="done-box"><input type="checkbox" data-step="8"> Шаг выполнен</label>
+    </div>
+    <div class="figs"><figure><img src="{{img:16_кожух_надевание}}" alt="Кожух надевается"><figcaption>Кожух (жёлтый) задвигается спереди назад, к стойке.</figcaption></figure><figure><img src="{{img:17_кожух_на_месте}}" alt="Кожух на месте"><figcaption>Кожух на месте — механизм собран.</figcaption></figure></div>
+  </article>
+</section>
+
+<section id="use">
+  <h2><span class="n">8</span>Как закупорить бутылку</h2>
+  <div class="grid2">
+    <div>
+      <ol class="list">
+        <li>Поднимите рукоять до верхнего упора.</li>
+        <li>Положите пробку на горлышко бутылки.</li>
+        <li>Задвиньте бутылку на основание стойки <b>точно под колокол</b>, по центру.</li>
+        <li>Плавно, без рывков, нажмите рукоять вниз до нижнего упора. Колокол опустится и обожмёт пробку.</li>
+        <li>Поднимите рукоять и выньте бутылку.</li>
+      </ol>
+      <div class="callout warn"><span class="t">Осторожно</span><p>Не держите пальцы под колоколом и у рукояти возле кожуха. Не давите на рукоять, если бутылка стоит не по центру — пробка обожмётся криво, а бутылка может треснуть.</p></div>
+    </div>
+    <figure><img src="{{img:18_бутылка}}" alt="Бутылка под колоколом"><figcaption>Бутылка (жёлтая) стоит на основании под колоколом, рукоять поднята.</figcaption></figure>
+  </div>
+</section>
+
+<section id="trouble">
+  <h2><span class="n">9</span>Если что-то не так</h2>
+  <div class="tbl"><table>
+    <tr><th>Что происходит</th><th>Почему</th><th>Что делать</th></tr>
+    <tr><td>Камень не надевается на кулису</td><td>Наплывы в окне камня или на кромках кулисы; надеваете со стороны втулки</td><td>Зашкурьте окно. Надевайте с дальнего конца рукояти (шаг 3).</td></tr>
+    <tr><td>Палец болтается в камне</td><td>Отверстие напечаталось крупнее</td><td>Посадите палец на суперклей (шаг 2).</td></tr>
+    <tr><td>Гайка не накручивается</td><td>В STL нет резьбы</td><td>Нарежьте резьбу плашкой М8 на пальце, возьмите покупную гайку (раздел 6).</td></tr>
+    <tr><td>Рукоять поворачивается туго</td><td>Отверстие кулисы меньше Ø10</td><td>Прогоните отверстие сверлом Ø10, зашкурьте ось O.</td></tr>
+    <tr><td>Ползун заедает в направляющей</td><td>Брусок толще 24 мм после печати</td><td>Зашкурьте боковые грани бруска до свободного хода.</td></tr>
+    <tr><td>Кулиса сползает с оси к вам</td><td>Не надет кожух или он не задвинут до стойки</td><td>Задвиньте кожух до упора (шаг 8) — он держит механизм.</td></tr>
+    <tr><td>Кожух не надевается</td><td>Рукоять не попадает в паз</td><td>Поставьте рукоять посередине хода и задвигайте кожух, ведя паз по рукояти.</td></tr>
+    <tr><td>Пробка обжимается криво</td><td>Бутылка не по центру под колоколом</td><td>Поставьте бутылку строго под колокол; при необходимости отметьте место на основании.</td></tr>
+  </table></div>
+  <h3>Как разобрать</h3>
+  <p>В обратном порядке: снимите кожух (сдвиньте вперёд), открутите гайку, снимите шайбу и ползун, снимите кулису с оси, сдвиньте камень с кулисы через дальний конец рукояти. Палец из камня без нужды не вынимайте.</p>
+</section>
+
+<footer>
+  <p><b>Комплект:</b> эта инструкция и папка «Детали для печати» — 8 файлов .stl (размеры в миллиметрах): 1 Стойка, 2 Кулиса (рукоять), 3 Камень, 4 Палец, 5 Ползун, 6 Шайба, 7 Гайка, 8 Кожух.</p>
+  <p>Курсовой проект «Ручной укупориватель на тангенсном механизме», УКП.00.000. Картинки — из 3D-модели КОМПАС-3D.</p>
+</footer>
+</main>
+
+<div id="zoom" hidden><img alt=""></div>
+<script>
+(function () {
+  var boxes = document.querySelectorAll('input[data-step]');
+  var KEY = 'ukp-steps';
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+  function update() {
+    var n = 0;
+    boxes.forEach(function (b) {
+      var card = b.closest('.step');
+      if (b.checked) { n++; card.classList.add('done'); } else { card.classList.remove('done'); }
+    });
+    document.getElementById('barfill').style.width = (100 * n / boxes.length) + '%';
+    document.getElementById('bartext').textContent = n === boxes.length ? 'Готово! Все 8 шагов выполнены' : 'Выполнено ' + n + ' из ' + boxes.length;
+  }
+  boxes.forEach(function (b) {
+    b.checked = !!saved[b.dataset.step];
+    b.addEventListener('change', function () {
+      saved[b.dataset.step] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+      update();
+    });
+  });
+  update();
+  var zoom = document.getElementById('zoom'), zimg = zoom.querySelector('img');
+  document.querySelectorAll('main img').forEach(function (img) {
+    img.addEventListener('click', function () { zimg.src = img.src; zimg.alt = img.alt; zoom.hidden = false; });
+  });
+  zoom.addEventListener('click', function () { zoom.hidden = true; });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') zoom.hidden = true; });
+})();
+</script>
+</body>
+</html>
