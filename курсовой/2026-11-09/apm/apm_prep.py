@@ -115,6 +115,34 @@ def split_kulisa(path):
     assert not d.Changed
 
 
+PIN_ZONES = (4.0, 5.0, 21.0)                         # палец: 0…4 — в стенке обоймы (запрессовка), 5…21 — в ползуне
+
+
+def split_pin(path):
+    """линии разъёма на цилиндре Ø10 пальца по плоскостям z = 4, 5, 21: зона запрессовки 0…4 и зона ползуна 5…21"""
+    d = open_doc(path)
+    d5 = A5.ksDocument3D(k5.TransferInterface(d, C.ksAPI5Auto, 0))
+    p5 = d5.GetPart(C3.pTop_Part)
+    top = qi(k5.TransferInterface(d, C.ksAPI7Dual, 0), A7.IKompasDocument3D).TopPart
+    for z in PIN_ZONES:
+        pl = p5.NewEntity(C3.o3d_planeOffset)
+        pd = pl.GetDefinition()
+        pd.SetPlane(p5.GetDefaultEntity(C3.o3d_planeXOY))
+        pd.offset, pd.direction = z, True
+        pl.hidden = True
+        pl.Create()
+        cyl = face_at(top, 0.0, 5.0, z + 0.5 if z < 21 else z - 0.5)
+        sl = qi(top, A7.IAuxiliaryGeomContainer).SplitLines.Add()
+        sl.CutObjects = [qi(k5.TransferInterface(pl, C.ksAPI7Dual, 0), A7.IModelObject)]
+        sl.Faces = [cyl]
+        assert sl.Update() and sl.Valid, ("линия разъёма пальца не построена", z)
+    refs = [str(face_at(top, 0.0, 5.0, z).Reference) for z in (2.0, 4.5, 13.0, 21.3)]
+    assert len(set(refs)) == 4, refs                               # четыре разные грани: запрессовка, зазор, ползун, до уступа
+    print("  палец: цилиндр Ø10 разбит на зоны 0…4 (запрессовка), 4…5, 5…21 (ползун), 21…21,5")
+    d.Save()
+    assert not d.Changed
+
+
 if __name__ == "__main__":
     for key in sys.argv[1:]:
         src = os.path.join(PARTS_DIR, FILES[key])
@@ -124,6 +152,8 @@ if __name__ == "__main__":
             shutil.copy2(src, dst)
             if key == "kulisa":
                 split_kulisa(dst)
+            if key == "pin":
+                split_pin(dst)
         prettify(dst)
         print("  копия для APM:", os.path.relpath(dst, HERE))
         picture(dst, os.path.join(PIC, f"{NAMES[key]}_1_деталь.png"), VIEW.get(key))
