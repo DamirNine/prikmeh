@@ -5,14 +5,19 @@
   — грани пластины, лежащие в выемке стойки (левая, правая, нижняя), отделены от граней кронштейнов и планок плоскостью
     z = 0 (они в одной плоскости и сливались в одну грань) — на них и на заднюю грань пластины ставится закрепление;
   — копия светлая, эскизы и начало координат скрыты; картинка apm/Картинки/направляющая_1_деталь.png.
-    python apm_prep_guide.py"""
+    python apm_prep_guide.py ["УКП.00.002 Направляющая 2 (APM).m3d" направляющая_2_деталь.png]
+Свежая копия делается из kompas/Детали, если файла ещё нет."""
 import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "kompas"))
 sys.stdout.reconfigure(encoding="utf-8")
 from kompas_build import A5, A7, C, C3, E, GD_PL_T, GD_X0, GD_X1, GD_Z0, PH_Y, Y_BOT, GD_PL_Y1, app, k5, qi, yD
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PATH = os.path.join(HERE, "УКП.00.002 Направляющая (APM).m3d")
+PATH = os.path.join(HERE, sys.argv[1] if len(sys.argv) > 1 else "УКП.00.002 Направляющая (APM).m3d")
+PNG = sys.argv[2] if len(sys.argv) > 2 else "направляющая_1_деталь.png"
+if not os.path.exists(PATH):
+    import shutil
+    shutil.copy2(os.path.join(HERE, "..", "kompas", "Детали", "УКП.00.002 Направляющая.m3d"), PATH)
 PIC = os.path.join(HERE, "Картинки"); os.makedirs(PIC, exist_ok=True)
 X_IN = E + 12.5                                   # внутренняя грань правой планки (к ползуну)
 Y0, Y1, Z1 = yD(PH_Y) - 20, yD(PH_Y) + 20, GD_Z0 + 16     # брусок ползуна 40 × 16 при φу
@@ -108,6 +113,6 @@ iso.SetCurrent()
 d5.ZoomPrevNextOrAll(2)
 rp = d5.RasterFormatParam(); rp.Init()
 rp.format, rp.colorType, rp.extResolution, rp.extScale, rp.onlyThinLine = C.ksRasterFormatPNG, 3, 200, 1.0, False
-png = os.path.join(PIC, "направляющая_1_деталь.png")
+png = os.path.join(PIC, PNG)
 assert d5.SaveAsToRasterFormat(png, rp), png
 print("сохранено:", PATH, "| картинка:", png)
