@@ -92,6 +92,7 @@ select{font:inherit;font-size:13.5px;border:1px solid #c5ccd6;border-radius:8px;
       <label><input type="checkbox" id="autocam" checked> Камера следит за шагом</label>
       <button id="bCover" title="Показать, сделать прозрачным или скрыть кожух">Кожух: виден</button>
       <button id="bView" title="Вернуть общий вид">Общий вид</button>
+      <button id="bClose" title="Приблизить к механизму: камень, палец, ползун и направляющая">Крупно</button>
     </div>
     <div id="tag"></div>
     <div id="bar">
@@ -1427,6 +1428,7 @@ function current() {
 // камера: общий вид и вид на шаг (направление взгляда пользователя сохраняется, меняются точка и расстояние)
 const c0 = Math.cos(PH0 * D2R), s0 = Math.sin(PH0 * D2R);
 const VIEW_ALL = { c: [150, 15, 0], d: 1560 }, VIEW_WORK = { c: [95, -105, 0], d: 1330 };
+const VIEW_CLOSE = { c: [E, 0, 6], d: 300 };                 // крупный план механизма (кнопка «Крупно»)
 const VIEWS = [{ c: [14, -135, 0], d: 1180 }, { c: [S_FAR * c0, S_FAR * s0, DZ + 12], d: 300 }, { c: [335 * c0, 335 * s0, DZ], d: 960 },
   { c: [150, 110, DZ / 2], d: 880 }, { c: [E, -30, 50], d: 620 }, { c: [E, -28, 62], d: 560 }, { c: [E, yD(PH0), 36], d: 250 }, VIEW_ALL,
   VIEW_ALL];                                                  // кожух — общим видом, без приближения
@@ -1511,6 +1513,7 @@ function sync() {
 $("bAll").onclick = actAll; $("bNext").onclick = actNext; $("bPrev").onclick = actPrev; $("bReset").onclick = actReset; $("bWork").onclick = actWork;
 $("bCover").onclick = () => { coverAuto = false; setCover((coverMode + 1) % 3); };
 $("bView").onclick = () => flyTo(work ? VIEW_WORK : VIEW_ALL, true);
+$("bClose").onclick = () => flyTo(VIEW_CLOSE, true);
 $("speed").onchange = e => { speed = +e.target.value; };
 window.addEventListener("keydown", e => {
   if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" || e.target.tagName === "BUTTON" || e.ctrlKey || e.altKey || e.metaKey) return;
