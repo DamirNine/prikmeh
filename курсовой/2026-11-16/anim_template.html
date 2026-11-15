@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Укупориватель — 3D-сборка</title>
+<style>
+:root{--ink:#16202c;--ink2:#56616f;--line:#d7dce4;--panel:#ffffff;--bg1:#f1f3f7;--bg2:#d5dbe4;--acc:#2563c9;--acc-ink:#fff;
+  --work:#b45309;--ok:#2f8f5b;--hl:#f2a900}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:15px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg1);overflow:hidden}
+#app{display:grid;grid-template-columns:330px 1fr;height:100%}
+#side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;z-index:2}
+#side header{padding:18px 20px 12px}
+.kicker{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+h1{font-size:21px;line-height:1.2;margin:4px 0 0}
+#steps{list-style:none;margin:0;padding:4px 10px 8px;overflow:auto;flex:1;min-height:0}
+#steps li{display:flex;gap:10px;align-items:center;padding:7px 10px;border-radius:8px;cursor:pointer;position:relative;color:var(--ink2);user-select:none}
+#steps li:hover{background:#f2f5f9}
+#steps .n{flex:none;width:24px;height:24px;border-radius:50%;border:1.5px solid #b9c1cc;display:grid;place-items:center;font-size:12.5px;font-weight:600;background:#fff}
+#steps li.done{color:var(--ink)}
+#steps li.done .n{background:var(--ok);border-color:var(--ok);color:#fff}
+#steps li.act{background:#eaf1fc;color:var(--ink);font-weight:600}
+#steps li.act .n{border-color:var(--acc);color:var(--acc)}
+#steps li .pr{position:absolute;left:44px;right:10px;bottom:2px;height:2px;background:#cfdcf3;border-radius:2px;overflow:hidden;display:none}
+#steps li.act .pr{display:block}
+#steps li .pr i{display:block;height:100%;width:0;background:var(--acc)}
+#desc{border-top:1px solid var(--line);padding:14px 20px 18px;min-height:150px}
+#desc h2{font-size:15.5px;margin:0 0 6px}
+#desc p{margin:0;color:var(--ink2);font-size:14px}
+#read{margin-top:10px;font-variant-numeric:tabular-nums;font-size:13.5px;color:var(--ink);background:#f4f6f9;border-radius:8px;padding:7px 10px;display:none}
+#stage{position:relative;min-width:0;min-height:0;background:radial-gradient(120% 90% at 60% 35%,var(--bg1) 0%,var(--bg2) 100%)}
+canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+#bar{position:absolute;left:12px;right:12px;margin:0 auto;width:max-content;bottom:18px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
+  background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:0 8px 28px rgba(22,32,44,.14);max-width:calc(100% - 24px)}
+button{font:inherit;color:var(--ink);background:#fff;border:1px solid #c5ccd6;border-radius:9px;padding:9px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;line-height:1.1}
+button:hover:not(:disabled){background:#f2f5f9;border-color:#aab3bf}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.42;cursor:default}
+button:focus-visible,select:focus-visible,#steps li:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button.pri{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:600}
+button.pri:hover:not(:disabled){background:#1f55ad;border-color:#1f55ad}
+button.work{border-color:var(--work);color:var(--work);font-weight:600}
+button.work.on{background:var(--work);color:#fff}
+button svg{width:16px;height:16px;fill:currentColor;flex:none}
+.sep{width:1px;background:var(--line);margin:2px 2px}
+#opts{position:absolute;top:14px;right:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;
+  background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:12px;padding:6px 8px;font-size:13.5px;max-width:calc(100% - 28px)}
+#opts label{display:inline-flex;align-items:center;gap:6px;color:var(--ink2);cursor:pointer}
+#opts button{padding:6px 10px;font-size:13.5px}
+select{font:inherit;font-size:13.5px;border:1px solid #c5ccd6;border-radius:8px;padding:5px 6px;background:#fff;color:var(--ink)}
+#hint{font-size:12.5px;color:var(--ink2);padding:10px 20px 14px;border-top:1px solid var(--line)}
+#tag{position:absolute;left:0;top:0;transform:translate(-50%,-150%);background:var(--ink);color:#fff;font-size:13px;font-weight:600;padding:4px 9px;border-radius:7px;pointer-events:none;display:none;white-space:nowrap}
+#tag:after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-top-color:var(--ink);border-bottom:0}
+#err{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:30px;color:var(--ink2)}
+@media (max-width:820px){
+  #app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  #side{border-right:0;border-bottom:1px solid var(--line)}
+  #side header{padding:10px 14px 4px}
+  h1{font-size:17px}
+  #steps{display:flex;gap:4px;padding:4px 10px;overflow-x:auto;flex:none}
+  #steps li{padding:4px}
+  #steps li .t,#steps li .pr{display:none!important}
+  #desc{padding:6px 14px 10px;min-height:0;border-top:0}
+  #desc p{font-size:13px}
+  #hint{display:none}
+  #opts{top:8px;right:8px}
+  #bar{bottom:10px}
+  button{padding:8px 10px}
+  button .lb2{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <header>
+      <div class="kicker">УКП.00.000 · тангенсный механизм</div>
+      <h1>Ручной укупориватель: сборка в 3D</h1>
+    </header>
+    <ol id="steps"></ol>
+    <div id="desc"><h2 id="dh"></h2><p id="dp"></p><div id="read"></div></div>
+    <div id="hint">Мышь: левая кнопка — вращать, колесо — приблизить, правая кнопка — двигать. На телефоне — пальцами.</div>
+  </aside>
+  <main id="stage">
+    <canvas id="c" tabindex="0" aria-label="3D-модель укупоривателя"></canvas>
+    <div id="opts">
+      <label>Скорость
+        <select id="speed"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+      </label>
+      <label><input type="checkbox" id="autocam" checked> Камера следит за шагом</label>
+      <button id="bCover" title="Показать, сделать прозрачным или скрыть кожух">Кожух: виден</button>
+      <button id="bView" title="Вернуть общий вид">Общий вид</button>
+    </div>
+    <div id="tag"></div>
+    <div id="bar">
+      <button id="bReset" title="Убрать все детали (R)"><svg viewBox="0 0 16 16"><path d="M8 3V.8L4.6 3.9 8 7V4.7a3.8 3.8 0 1 1-3.7 4.6H2.6A5.5 5.5 0 1 0 8 3z"/></svg>Разобрать всё</button>
+      <button id="bPrev" title="Вернуть последнюю деталь (←)"><svg viewBox="0 0 16 16"><path d="M3 3h2v10H3zM13 3v10L6 8z"/></svg>Шаг назад</button>
+      <button id="bNext" class="pri" title="Следующая деталь; повторное нажатие ставит её на место сразу (→ или пробел)"><span id="lNext">Следующий шаг</span><svg viewBox="0 0 16 16"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg></button>
+      <button id="bAll" title="Собрать всё по порядку (Enter)"><svg id="iAll" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z"/></svg><span id="lAll">Собрать всё</span></button>
+      <span class="sep"></span>
+      <button id="bWork" class="work" title="Показать механизм в работе (W)"><svg viewBox="0 0 16 16"><path d="M9.6 1l.4 1.8 1.2.5 1.6-1 1.4 1.5-1 1.5.5 1.3 1.8.4v2l-1.8.4-.5 1.2 1 1.6-1.4 1.4-1.6-1-1.2.5-.4 1.9h-2l-.4-1.9-1.3-.5-1.5 1-1.5-1.4 1-1.6-.5-1.2L1 9V7l1.9-.4.5-1.3-1-1.5 1.5-1.5 1.5 1 1.3-.5L7.6 1zM8.6 5.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8z"/></svg><span id="lWork">Работа механизма</span></button>
+    </div>
+    <div id="err">Не удалось запустить 3D-графику (WebGL). Откройте файл в свежей версии Chrome, Edge, Firefox или Safari.</div>
+  </main>
+</div>
+<script>/*__THREE__*/</script>
+<script>/*__ORBIT__*/</script>
+<script>
+/*__DATA__*/
+(function () {
+"use strict";
+const D2R = Math.PI / 180, { E, PH_N, PH_K, PH0, Z_ST, Y_ST0, Z_KUL, Z_KAM, Z_PIN, Z_WASHER, Z_NUT } = DATA;
+const yD = ph => E * Math.tan(ph * D2R), sD = ph => E / Math.cos(ph * D2R);   // высота пальца D и его расстояние от оси O вдоль кулисы
+const DZ = 150, S_FAR = 548, S_MID = 250;                 // вынос подсборки вперёд; камень за концом рукояти; середина кулисы
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const lerp = (a, b, t) => a + (b - a) * t;
+const num = (x, d = 1) => x.toFixed(d).replace(".", ",").replace("-", "−");
+const $ = id => document.getElementById(id);
+
+// ------------------------------------------------------------------ шаги (как в «Инструкции по сборке»)
+const STEPS = [
+  { t: "Стойка", d: "Поставьте стойку основанием на стол, гладкой задней стороной к стене. На ней уже есть ось O, два упора рукояти, выемка под направляющую и два зацепа для кожуха.", dur: 2.2, hl: ["stand"], tag: "Стойка" },
+  { t: "Палец в камень", d: "Вставьте палец в переднюю стенку камня гладким широким концом, резьбой наружу. Вдавите до упора — торец вровень с внутренней стороной стенки.", dur: 3.2, hl: ["pin", "kamen"], tag: "Палец" },
+  { t: "Камень на кулису", d: "Наденьте камень на кулису с дальнего конца рукояти и сдвиньте к середине. Палец и втулка кулисы смотрят в разные стороны.", dur: 3.6, hl: ["kamen", "pin"], tag: "Камень с пальцем" },
+  { t: "Кулиса на ось O", d: "Сдвиньте камень к отверстию и наденьте кулису на ось O до упора в стойку: рукоять встаёт между упорами, палец смотрит вперёд.", dur: 4.4, hl: ["kulisa", "kamen", "pin"], tag: "Кулиса с камнем" },
+  { t: "Направляющая", d: "Задвиньте направляющую спереди: пластину — в выемку стойки до дна, планки — по обе стороны от камня с пальцем. Винтов не нужно: выемка держит её снизу и с боков, спереди — кожух.", dur: 3.4, hl: ["guide"], tag: "Направляющая" },
+  { t: "Ползун", d: "Колоколом вниз вставьте брусок ползуна между планками направляющей и наденьте его отверстием на палец.", dur: 3.2, hl: ["polzun"], tag: "Ползун" },
+  { t: "Шайба и гайка", d: "Наденьте шайбу на резьбовой конец пальца и навинтите гайку М10 до упора — дальше её не пустит конец резьбы. Шайба остаётся с зазором 0,5 мм, ползун свободно поворачивается на пальце.", dur: 3.6, hl: ["washer", "nut"], tag: "Шайба и гайка" },
+  { t: "Проверка хода", d: "Поднимите рукоять до верхнего упора и плавно опустите до нижнего: ползун идёт строго вертикально, ход колокола — 16 мм.", dur: 4.6, hl: ["kulisa"], tag: "" },
+  { t: "Кожух", d: "Поставьте рукоять посередине хода и надвиньте кожух спереди до листа стойки: паз — на рукоять, паз в дне — на шток. Боковые защёлки щёлкают за зацепы стойки (нажим около 10 Н). Снять: отжать обе защёлки и потянуть кожух вперёд.", dur: 3.2, hl: ["cover"], tag: "Кожух" }];
+const N = STEPS.length;
+const WORK = { t: "Механизм в работе", d: "Бутылка с пробкой ставится под колокол. Нажим на рукоять опускает колокол на 16 мм: первые 10 мм — подход, последние 6 мм конус обжимает пробку на горлышке." };
+const IDLE0 = { t: "Сборка с нуля", d: "Нажмите «Следующий шаг», чтобы поставить первую деталь, или «Собрать всё» — детали встанут на места по порядку. Модель можно вращать, приближать и двигать мышью или пальцами." };
+const DONE = { t: "Механизм собран", d: "Все детали на месте. Нажмите «Работа механизма», чтобы увидеть, как он закупоривает бутылку, или разберите его и соберите заново." };
+
+function baseState(n) {                                    // состояние после n выполненных шагов
+  return { phi: PH0, hl: 0, hlKeys: [], bottle: null,
+    stand: { o: +(n >= 1), dy: 0 },
+    kamen: { o: +(n >= 2), s: n <= 2 ? S_FAR : n === 3 ? S_MID : null, dz: n === 2 || n === 3 ? DZ : 0 },
+    pin: { o: +(n >= 2), dz: 0 },
+    kulisa: { o: +(n >= 3), dz: n === 3 ? DZ : 0 }, guide: { o: +(n >= 5), dz: 0 },
+    polzun: { o: +(n >= 6), dz: 0 }, washer: { o: +(n >= 7), dz: 0 }, nut: { o: +(n >= 7), dz: 0, spin: 0 },
+    cover: { o: +(n >= 9), dz: 0 } };
+}
+const MOVE = [
+  (S, t) => { S.stand.o = seg(t, 0, .45); S.stand.dy = 80 * (1 - ease(t)); },
+  (S, t) => { S.kamen.o = seg(t, 0, .22); S.kamen.s = S_FAR; S.kamen.dz = DZ; S.pin.o = seg(t, .18, .4); S.pin.dz = 60 * (1 - ease(seg(t, .35, 1))); },
+  (S, t) => { S.kulisa.o = seg(t, 0, .28); S.kulisa.dz = DZ + 40 * (1 - ease(seg(t, 0, .3))); S.kamen.s = lerp(S_FAR, S_MID, ease(seg(t, .3, 1))); S.kamen.dz = DZ; },
+  (S, t) => { S.kamen.s = lerp(S_MID, sD(PH0), ease(seg(t, 0, .45))); S.kamen.dz = S.kulisa.dz = DZ * (1 - ease(seg(t, .45, 1))); },
+  (S, t) => { S.guide.o = seg(t, 0, .22); S.guide.dz = DZ * (1 - ease(seg(t, .1, 1))); },
+  (S, t) => { S.polzun.o = seg(t, 0, .22); S.polzun.dz = DZ * (1 - ease(seg(t, .1, 1))); },
+  (S, t) => { S.washer.o = seg(t, 0, .18); S.washer.dz = 60 * (1 - ease(seg(t, .05, .5)));
+              S.nut.o = seg(t, .38, .55); const k = ease(seg(t, .42, 1)); S.nut.dz = 60 * (1 - k); S.nut.spin = 5 * Math.PI * (1 - k); },
+  (S, t) => { S.phi = t < .28 ? lerp(PH0, PH_N, ease(t / .28)) : t < .75 ? lerp(PH_N, PH_K, ease((t - .28) / .47)) : lerp(PH_K, PH0, ease((t - .75) / .25)); },
+  (S, t) => { S.cover.o = seg(t, 0, .22); S.cover.dz = 120 * (1 - ease(seg(t, .1, 1))); }];
+const WCYC = [1.1, 1.6, .45, 1.2, 1.1, .35];               // бутылка въезжает, рукоять вниз, пауза, вверх, бутылка уезжает, пауза
+const WSUM = WCYC.reduce((a, b) => a + b, 0), TRAVEL0 = yD(PH_N);
+function workState(tw) {
+  const S = baseState(N); let t = tw % WSUM, k = 0;
+  while (t > WCYC[k]) { t -= WCYC[k]; k++; }
+  const u = t / WCYC[k], B = { z: 0, o: 1, f: 0 };
+  if (k === 0) { S.phi = PH_N; B.z = 150 * (1 - ease(u)); B.o = seg(u, 0, .3); }
+  else if (k === 1) S.phi = lerp(PH_N, PH_K, ease(u));
+  else if (k === 2) S.phi = PH_K;
+  else if (k === 3) S.phi = lerp(PH_K, PH_N, ease(u));
+  else if (k === 4) { S.phi = PH_N; B.z = 150 * ease(u); B.o = 1 - seg(u, .7, 1); }
+  else { S.phi = PH_N; B.o = 0; }
+  B.f = k === 1 ? clamp((TRAVEL0 - yD(S.phi) - 10) / 6) : k >= 2 && k <= 4 ? 1 : 0;   // обжим: последние 6 мм хода
+  S.bottle = B;
+  return S;
+}
+
+// ------------------------------------------------------------------ сцена
+let renderer;
+const canvas = $("c"), stage = $("stage");
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); }
+catch (e) { $("err").style.display = "grid"; return; }
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 5, 9000);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = .09; controls.minDistance = 60; controls.maxDistance = 4000;
+controls.zoomSpeed = 1.1; controls.rotateSpeed = .9;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x7d8696, .52));
+const key = new THREE.DirectionalLight(0xffffff, .62); key.position.set(500, 800, 900); scene.add(key);
+const fill = new THREE.DirectionalLight(0xdfe8ff, .22); fill.position.set(-700, 150, 500); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, .16); rim.position.set(200, 300, -800); scene.add(rim);
+
+function b64f32(s) { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new Float32Array(u.buffer); }
+function creased(pos, deg) {                               // нормали: сглаживание только между гранями с углом меньше deg
+  const n = pos.length / 9, fa = new Float32Array(n * 3), fn = new Float32Array(n * 3), cosT = Math.cos(deg * D2R), map = new Map();
+  const kk = i => Math.round(pos[i] * 400) + "_" + Math.round(pos[i + 1] * 400) + "_" + Math.round(pos[i + 2] * 400);
+  for (let f = 0; f < n; f++) {
+    const i = f * 9, ax = pos[i + 3] - pos[i], ay = pos[i + 4] - pos[i + 1], az = pos[i + 5] - pos[i + 2],
+      bx = pos[i + 6] - pos[i], by = pos[i + 7] - pos[i + 1], bz = pos[i + 8] - pos[i + 2];
+    const x = ay * bz - az * by, y = az * bx - ax * bz, z = ax * by - ay * bx, l = Math.hypot(x, y, z) || 1;
+    fa.set([x, y, z], f * 3); fn.set([x / l, y / l, z / l], f * 3);
+    for (let v = 0; v < 3; v++) { const k = kk(i + v * 3); let a = map.get(k); if (!a) map.set(k, a = []); a.push(f); }
+  }
+  const out = new Float32Array(pos.length);
+  for (let f = 0; f < n; f++) for (let v = 0; v < 3; v++) {
+    let x = 0, y = 0, z = 0;
+    for (const g of map.get(kk(f * 9 + v * 3)))
+      if (fn[f * 3] * fn[g * 3] + fn[f * 3 + 1] * fn[g * 3 + 1] + fn[f * 3 + 2] * fn[g * 3 + 2] > cosT) { x += fa[g * 3]; y += fa[g * 3 + 1]; z += fa[g * 3 + 2]; }
+    const l = Math.hypot(x, y, z) || 1; out.set([x / l, y / l, z / l], f * 9 + v * 3);
+  }
+  return out;
+}
+const HL = new THREE.Color(0xf2a900), DARK = { kulisa: 1, polzun: 1 }, P = {};
+for (const p of DATA.parts) {
+  const pos = b64f32(DATA.geo[p.key]), g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setAttribute("normal", new THREE.BufferAttribute(creased(pos, 33), 3));
+  const plastic = p.key === "cover";
+  const mat = new THREE.MeshStandardMaterial({ color: p.color, metalness: plastic ? 0 : .28, roughness: plastic ? .62 : .5,
+    side: plastic ? THREE.DoubleSide : THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  const lm = new THREE.LineBasicMaterial({ color: DARK[p.key] ? 0x9aa6b6 : 0x1e2631, transparent: true, opacity: .6 });
+  const grp = new THREE.Group();
+  grp.add(new THREE.Mesh(g, mat), new THREE.LineSegments(new THREE.EdgesGeometry(g, 28), lm));
+  scene.add(grp);
+  P[p.key] = { grp, mat, lm, title: p.title };
+}
+// бутылка и пробка — только для «работы механизма»
+const bottle = new THREE.Group(); scene.add(bottle);
+bottle.add(new THREE.Mesh(new THREE.LatheGeometry(DATA.bottle.map(q => new THREE.Vector2(q[0], q[1])), 56),
+  new THREE.MeshStandardMaterial({ color: 0x8a4b16, transparent: true, opacity: .5, roughness: .15, metalness: 0, side: THREE.DoubleSide, depthWrite: false })));
+const capMat = new THREE.MeshStandardMaterial({ color: 0xd4a72c, metalness: .55, roughness: .35, side: THREE.DoubleSide, transparent: true });
+const cap = new THREE.Mesh(new THREE.BufferGeometry(), capMat); bottle.add(cap);
+let capF = -1;
+function setCap(f) {                                        // юбка пробки: Ø32,1 до обжима → Ø28,6 после
+  if (Math.abs(f - capF) < .004) return; capF = f;
+  const top = DATA.BOTTLE_H + DATA.CAP_TOP, r = lerp(DATA.R_K, DATA.R_OBZH, f);
+  cap.geometry.dispose();
+  cap.geometry = new THREE.LatheGeometry([[0, top], [11.6, top], [13.2, top - 1.1], [lerp(14.6, 14.0, f), top - 2.6], [r, DATA.BOTTLE_H - DATA.CAP_SKIRT]]
+    .map(q => new THREE.Vector2(q[0], q[1])), 42);
+}
+setCap(0);
+// стол под основанием: мягкое светлое пятно
+const cv = document.createElement("canvas"); cv.width = cv.height = 256;
+const cx = cv.getContext("2d"), gr = cx.createRadialGradient(128, 128, 10, 128, 128, 128);
+gr.addColorStop(0, "rgba(255,255,255,.95)"); gr.addColorStop(.55, "rgba(255,255,255,.55)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+cx.fillStyle = gr; cx.fillRect(0, 0, 256, 256);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(900, 64), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false }));
+floor.rotation.x = -Math.PI / 2; floor.position.set(14, Y_ST0 - 20.4, 0); scene.add(floor);
+
+// ------------------------------------------------------------------ состояние и управление
+let done = 0, anim = null, auto = false, paused = false, work = null, speed = 1, coverMode = 0, coverAuto = false, lastS = null;
+const COVER = [["Кожух: виден", 1], ["Кожух: прозрачный", .2], ["Кожух: скрыт", 0]];
+const tagPos = new THREE.Vector3(), tmp = new THREE.Vector3();
+
+function setOpacity(p, o) {
+  p.grp.visible = o > .004;
+  p.mat.opacity = o; p.mat.transparent = o < .995; p.mat.depthWrite = o > .5;
+  p.lm.opacity = .6 * o;
+}
+function pose(S) {
+  const ph = S.phi * D2R, c = Math.cos(ph), s = Math.sin(ph), y = yD(S.phi), sk = S.kamen.s === null ? sD(S.phi) : S.kamen.s;
+  P.stand.grp.position.set(0, S.stand.dy, Z_ST);
+  P.kulisa.grp.position.set(0, 0, Z_KUL + S.kulisa.dz); P.kulisa.grp.rotation.z = ph;
+  P.kamen.grp.position.set(sk * c, sk * s, Z_KAM + S.kamen.dz); P.kamen.grp.rotation.z = ph;
+  P.pin.grp.position.set(sk * c, sk * s, Z_PIN + S.kamen.dz + S.pin.dz); P.pin.grp.rotation.z = ph;
+  P.guide.grp.position.set(0, 0, Z_ST + S.guide.dz);
+  P.polzun.grp.position.set(E, y, S.polzun.dz);
+  P.washer.grp.position.set(E, y, Z_WASHER + S.washer.dz); P.washer.grp.rotation.z = ph;
+  P.nut.grp.position.set(E, y, Z_NUT + S.nut.dz); P.nut.grp.rotation.z = ph + S.nut.spin;
+  P.cover.grp.position.set(0, 0, Z_ST + S.cover.dz);
+  for (const k in P) {
+    setOpacity(P[k], S[k].o * (k === "cover" ? COVER[coverMode][1] : 1));
+    P[k].mat.emissive.copy(HL).multiplyScalar(S.hlKeys.indexOf(k) >= 0 ? .42 * S.hl : 0);
+  }
+  if (coverMode === 1) P.cover.mat.depthWrite = false;
+  if (S.bottle && S.bottle.o > .004) {
+    bottle.visible = true; bottle.position.set(E, Y_ST0, S.bottle.z);
+    bottle.children[0].material.opacity = .5 * S.bottle.o; capMat.opacity = S.bottle.o; setCap(S.bottle.f);
+  } else bottle.visible = false;
+  // точка для подписи активной детали
+  const i = anim ? anim.i : -1;
+  if (i === 0) tagPos.set(14, 66 + S.stand.dy, Z_ST);
+  else if (i === 1) tagPos.copy(P.pin.grp.position).add(tmp.set(0, 6, 30));
+  else if (i === 2) tagPos.copy(P.kamen.grp.position).add(tmp.set(0, 14, 8));
+  else if (i === 3) tagPos.set(230 * c, 230 * s + 10, Z_KUL + S.kulisa.dz + 8);
+  else if (i === 4) tagPos.set(E + 18, -48, Z_ST + S.guide.dz + 55);
+  else if (i === 5) tagPos.set(E, y + 22, S.polzun.dz + 8);
+  else if (i === 6) tagPos.copy(P.nut.grp.position).add(tmp.set(0, 11, 5));
+  else if (i === 8) tagPos.set(16, 64, Z_ST + S.cover.dz + 58);
+}
+function current() {
+  if (work) return workState(work.t);
+  if (!anim) return baseState(done);
+  const S = baseState(anim.i), t = clamp(anim.t);
+  MOVE[anim.i](S, t);
+  S.hlKeys = STEPS[anim.i].hl; S.hl = Math.min(seg(t, 0, .08), 1 - seg(t, .84, 1));
+  return S;
+}
+
+// камера: общий вид и вид на шаг (направление взгляда пользователя сохраняется, меняются точка и расстояние)
+const c0 = Math.cos(PH0 * D2R), s0 = Math.sin(PH0 * D2R);
+const VIEW_ALL = { c: [150, 15, 0], d: 1560 }, VIEW_WORK = { c: [95, -105, 0], d: 1330 };
+const VIEWS = [{ c: [14, -135, 0], d: 1180 }, { c: [S_FAR * c0, S_FAR * s0, DZ + 12], d: 300 }, { c: [335 * c0, 335 * s0, DZ], d: 960 },
+  { c: [150, 110, DZ / 2], d: 880 }, { c: [E, -30, 50], d: 620 }, { c: [E, -28, 62], d: 560 }, { c: [E, yD(PH0), 36], d: 250 }, VIEW_ALL,
+  { c: [16, 4, 52], d: 560 }];
+let camTween = null;
+const fit = d => d * Math.max(1, .82 / camera.aspect);     // на узком экране отодвигаемся
+function flyTo(v, force) {
+  if (!force && !$("autocam").checked) return;
+  camTween = { c0: controls.target.clone(), d0: camera.position.distanceTo(controls.target), c1: new THREE.Vector3(...v.c), d1: fit(v.d), t: 0 };
+}
+controls.addEventListener("start", () => { camTween = null; });
+function camStep(dt) {
+  if (!camTween) return;
+  camTween.t = Math.min(1, camTween.t + dt / .9);
+  const k = ease(camTween.t), dir = tmp.copy(camera.position).sub(controls.target).normalize();
+  const d = lerp(camTween.d0, camTween.d1, k);
+  controls.target.lerpVectors(camTween.c0, camTween.c1, k);
+  camera.position.copy(controls.target).addScaledVector(dir, d);
+  if (camTween.t >= 1) camTween = null;
+}
+
+function startStep(i, gap) { anim = { i, t: gap ? -.5 / STEPS[i].dur : 0 }; paused = false; flyTo(VIEWS[i]); }
+function stopWork() { if (work) { work = null; if (coverAuto && coverMode === 1) setCover(0); coverAuto = false; } }
+function actAll() {
+  if (work) stopWork();
+  if (auto && anim) { paused = !paused; return sync(); }
+  if (done >= N && !anim) done = 0;
+  auto = true; paused = false;
+  if (!anim) startStep(done);
+  sync();
+}
+function actNext() {
+  stopWork();
+  if (anim) { done = anim.i + 1; anim = null; auto = false; paused = false; }      // второй раз — деталь сразу на месте
+  else if (done < N) { auto = false; startStep(done); }
+  sync();
+}
+function actPrev() {
+  stopWork(); auto = false; paused = false;
+  if (anim) anim = null;                                                        // шаг шёл — отменяем его
+  else if (done > 0) done--;
+  sync();
+}
+function actReset() { stopWork(); anim = null; auto = false; paused = false; done = 0; flyTo(VIEW_ALL); sync(); }
+function actWork() {
+  if (work) { stopWork(); flyTo(VIEW_ALL); return sync(); }
+  anim = null; auto = false; paused = false; done = N;
+  if (coverMode === 0) { setCover(1); coverAuto = true; }                       // чтобы механизм было видно под кожухом; после остановки кожух вернётся
+  work = { t: 0 }; flyTo(VIEW_WORK); sync();
+}
+function jump(i) { stopWork(); auto = false; done = i; startStep(i); sync(); }
+function setCover(m) { coverMode = m; $("bCover").textContent = COVER[m][0]; }
+
+// ------------------------------------------------------------------ интерфейс
+const ol = $("steps");
+STEPS.forEach((s, i) => {
+  const li = document.createElement("li"); li.tabIndex = 0; li.title = "Показать этот шаг";
+  li.innerHTML = '<span class="n">' + (i + 1) + '</span><span class="t"></span><span class="pr"><i></i></span>';
+  li.querySelector(".t").textContent = s.t;
+  li.onclick = () => jump(i);
+  li.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); jump(i); } };
+  ol.appendChild(li);
+});
+const lis = [...ol.children];
+function sync() {
+  lis.forEach((li, i) => {
+    li.className = (anim && anim.i === i ? "act" : i < (anim ? anim.i : done) ? "done" : "");
+  });
+  const info = work ? WORK : anim ? { t: "Шаг " + (anim.i + 1) + " из " + N + ". " + STEPS[anim.i].t, d: STEPS[anim.i].d }
+    : done === 0 ? IDLE0 : done === N ? DONE : { t: "Шаг " + done + " из " + N + " выполнен. " + STEPS[done - 1].t, d: STEPS[done - 1].d };
+  $("dh").textContent = info.t; $("dp").textContent = info.d;
+  $("lNext").textContent = anim ? "Поставить сразу" : "Следующий шаг";
+  $("bNext").disabled = !anim && done >= N;
+  $("bPrev").disabled = !anim && done === 0 && !work;
+  $("bReset").disabled = !anim && done === 0 && !work;
+  const playing = auto && anim && !paused;
+  $("lAll").textContent = playing ? "Пауза" : auto && anim ? "Продолжить" : done >= N && !anim ? "Собрать заново" : "Собрать всё";
+  $("iAll").innerHTML = playing ? '<path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/>' : '<path d="M4 2.5v11l9-5.5z"/>';
+  $("bWork").classList.toggle("on", !!work);
+  $("lWork").textContent = work ? "Остановить" : "Работа механизма";
+  if (anim && anim.i >= 0) lis[anim.i].scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+$("bAll").onclick = actAll; $("bNext").onclick = actNext; $("bPrev").onclick = actPrev; $("bReset").onclick = actReset; $("bWork").onclick = actWork;
+$("bCover").onclick = () => { coverAuto = false; setCover((coverMode + 1) % 3); };
+$("bView").onclick = () => flyTo(work ? VIEW_WORK : VIEW_ALL, true);
+$("speed").onchange = e => { speed = +e.target.value; };
+window.addEventListener("keydown", e => {
+  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" || e.target.tagName === "BUTTON" || e.ctrlKey || e.altKey || e.metaKey) return;
+  const k = e.key.toLowerCase();
+  if (k === "arrowright" || k === " ") { e.preventDefault(); if (!$("bNext").disabled) actNext(); }
+  else if (k === "arrowleft") { e.preventDefault(); actPrev(); }
+  else if (k === "enter") actAll();
+  else if (k === "r" || k === "к") actReset();
+  else if (k === "w" || k === "ц") actWork();
+});
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage); resize();
+controls.target.set(...VIEW_ALL.c);
+camera.position.copy(controls.target).add(new THREE.Vector3(.55, .26, 1).normalize().multiplyScalar(fit(VIEW_ALL.d)));
+
+const tag = $("tag"), read = $("read");
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (work) work.t += dt * speed;
+  else if (anim && !paused) {
+    anim.t += dt * speed / STEPS[anim.i].dur;
+    if (anim.t >= 1) {
+      done = anim.i + 1; anim = null;
+      if (auto && done < N) startStep(done, true); else auto = false;
+      sync();
+    }
+  }
+  const S = lastS = current();
+  pose(S); camStep(dt); controls.update();
+  renderer.render(scene, camera);
+  // подпись детали и полоска шага
+  const label = anim && S.hl > .05 ? STEPS[anim.i].tag : "";
+  if (label) {
+    tmp.copy(tagPos).project(camera);
+    tag.style.display = tmp.z < 1 ? "block" : "none";
+    tag.style.left = ((tmp.x + 1) / 2 * stage.clientWidth) + "px"; tag.style.top = ((1 - tmp.y) / 2 * stage.clientHeight) + "px";
+    if (tag.textContent !== label) tag.textContent = label;
+  } else tag.style.display = "none";
+  if (anim) lis[anim.i].querySelector("i").style.width = (clamp(anim.t) * 100).toFixed(1) + "%";
+  if (work || (anim && anim.i === 7)) {
+    read.style.display = "block";
+    read.textContent = "Угол рукояти φ = " + num(S.phi) + "° · колокол опущен на " + num(Math.max(0, TRAVEL0 - yD(S.phi))) + " мм из 16";
+  } else read.style.display = "none";
+  requestAnimationFrame(frame);
+}
+sync();
+requestAnimationFrame(frame);
+window.__anim = { get state() { return { done, anim: anim && { i: anim.i, t: anim.t }, auto, paused, work: !!work, phi: lastS && lastS.phi, coverMode }; },
+  set(n) { stopWork(); anim = null; auto = false; done = n; sync(); }, seek(i, t) { stopWork(); auto = false; done = i; anim = { i, t }; paused = true; sync(); },
+  P, camera, controls, scene };
+})();
+</script>
+</body>
+</html>
