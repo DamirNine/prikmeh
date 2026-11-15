@@ -131,7 +131,7 @@ const STEPS = [
   { t: "Ползун", d: "Колоколом вниз вставьте брусок ползуна между планками направляющей и наденьте его отверстием на палец.", dur: 3.2, hl: ["polzun"], tag: "Ползун" },
   { t: "Шайба и гайка", d: "Наденьте шайбу на резьбовой конец пальца и навинтите гайку М10 до упора — дальше её не пустит конец резьбы. Шайба остаётся с зазором 0,5 мм, ползун свободно поворачивается на пальце.", dur: 3.6, hl: ["washer", "nut"], tag: "Шайба и гайка" },
   { t: "Проверка хода", d: "Поднимите рукоять до верхнего упора и плавно опустите до нижнего: ползун идёт строго вертикально, ход колокола — 16 мм.", dur: 4.6, hl: ["kulisa"], tag: "" },
-  { t: "Кожух", d: "Поставьте рукоять посередине хода и надвиньте кожух спереди до листа стойки: паз — на рукоять, паз в дне — на шток. Боковые защёлки щёлкают за зацепы стойки (нажим около 10 Н). Снять: отжать обе защёлки и потянуть кожух вперёд.", dur: 3.2, hl: ["cover"], tag: "Кожух" }];
+  { t: "Кожух", d: "Поставьте рукоять посередине хода и надвиньте кожух спереди до листа стойки: паз — на рукоять, паз в дне — на шток. Крючки боковых язычков наезжают скосом на зацепы стойки, язычки отгибаются наружу и в конце защёлкиваются (нажим около 10 Н). Снять: отжать оба язычка и потянуть кожух вперёд.", dur: 5.2, hl: ["cover"], tag: "Кожух" }];
 const N = STEPS.length;
 const WORK = { t: "Механизм в работе", d: "Бутылка с пробкой ставится под колокол. Нажим на рукоять опускает колокол на 16 мм: первые 10 мм — подход, последние 6 мм конус обжимает пробку на горлышке." };
 const IDLE0 = { t: "Сборка с нуля", d: "Нажмите «Следующий шаг», чтобы поставить первую деталь, или «Собрать всё» — детали встанут на места по порядку. Модель можно вращать, приближать и двигать мышью или пальцами." };
@@ -156,7 +156,7 @@ const MOVE = [
   (S, t) => { S.washer.o = seg(t, 0, .18); S.washer.dz = 60 * (1 - ease(seg(t, .05, .5)));
               S.nut.o = seg(t, .38, .55); const k = ease(seg(t, .42, 1)); S.nut.dz = 60 * (1 - k); S.nut.spin = 5 * Math.PI * (1 - k); },
   (S, t) => { S.phi = t < .28 ? lerp(PH0, PH_N, ease(t / .28)) : t < .75 ? lerp(PH_N, PH_K, ease((t - .28) / .47)) : lerp(PH_K, PH0, ease((t - .75) / .25)); },
-  (S, t) => { S.cover.o = seg(t, 0, .22); S.cover.dz = 120 * (1 - ease(seg(t, .1, 1))); }];
+  (S, t) => { S.cover.o = seg(t, 0, .2); S.cover.dz = t < .5 ? lerp(120, 9, ease(seg(t, .08, .5))) : 9 * (1 - seg(t, .5, .9)); }];   // последние 9 мм — медленно: защёлки
 const WCYC = [1.1, 1.6, .45, 1.2, 1.1, .35];               // бутылка въезжает, рукоять вниз, пауза, вверх, бутылка уезжает, пауза
 const WSUM = WCYC.reduce((a, b) => a + b, 0), TRAVEL0 = yD(PH_N);
 function workState(tw) {
@@ -225,6 +225,23 @@ for (const p of DATA.parts) {
   scene.add(grp);
   P[p.key] = { grp, mat, lm, title: p.title };
 }
+// язычки защёлок кожуха — отдельные сетки на шарнире у корня язычка (внутри группы кожуха)
+const TONGUE = [], SN = DATA.SNAP, SNAP_SHOW = 3;                // отгиб на экране — в 3 раза крупнее настоящего
+for (const tg of DATA.tongues) {
+  const pos = b64f32(tg.geo), g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setAttribute("normal", new THREE.BufferAttribute(creased(pos, 33), 3));
+  g.translate(-tg.hinge[0], 0, -tg.hinge[1]);
+  const piv = new THREE.Group(); piv.position.set(tg.hinge[0], 0, tg.hinge[1]);
+  piv.add(new THREE.Mesh(g, P.cover.mat), new THREE.LineSegments(new THREE.EdgesGeometry(g, 28), P.cover.lm));
+  P.cover.grp.add(piv); TONGUE.push({ piv, k: tg.k });
+}
+function snapDefl(dz) {                                     // отгиб конца язычка (мм), кожух не дошёл до стойки на dz
+  if (dz <= 0 || dz >= SN.ZL) return 0;
+  const zl = Math.min(SN.ZH, SN.ZL - dz);                   // самая глубокая точка крючка, которая сейчас под козырьком
+  const p = SN.Y * clamp((zl - SN.RAMP0) / (SN.RAMP1 - SN.RAMP0));
+  return Math.max(0, p - SN.CLR);
+}
 // бутылка и пробка — только для «работы механизма»
 const bottle = new THREE.Group(); scene.add(bottle);
 bottle.add(new THREE.Mesh(new THREE.LatheGeometry(DATA.bottle.map(q => new THREE.Vector2(q[0], q[1])), 56),
@@ -269,6 +286,8 @@ function pose(S) {
   P.washer.grp.position.set(E, y, Z_WASHER + S.washer.dz); P.washer.grp.rotation.z = ph;
   P.nut.grp.position.set(E, y, Z_NUT + S.nut.dz); P.nut.grp.rotation.z = ph + S.nut.spin;
   P.cover.grp.position.set(0, 0, Z_ST + S.cover.dz);
+  S.snap = snapDefl(S.cover.dz);
+  for (const tg of TONGUE) tg.piv.rotation.y = tg.k * SNAP_SHOW * S.snap / (SN.L - SN.ZH / 2);
   for (const k in P) {
     setOpacity(P[k], S[k].o * (k === "cover" ? COVER[coverMode][1] : 1));
     P[k].mat.emissive.copy(HL).multiplyScalar(S.hlKeys.indexOf(k) >= 0 ? .42 * S.hl : 0);
@@ -304,7 +323,8 @@ const VIEW_ALL = { c: [150, 15, 0], d: 1560 }, VIEW_WORK = { c: [95, -105, 0], d
 const VIEWS = [{ c: [14, -135, 0], d: 1180 }, { c: [S_FAR * c0, S_FAR * s0, DZ + 12], d: 300 }, { c: [335 * c0, 335 * s0, DZ], d: 960 },
   { c: [150, 110, DZ / 2], d: 880 }, { c: [E, -30, 50], d: 620 }, { c: [E, -28, 62], d: 560 }, { c: [E, yD(PH0), 36], d: 250 }, VIEW_ALL,
   { c: [16, 4, 52], d: 560 }];
-let camTween = null;
+let camTween = null, snapCam = false;
+const VIEW_SNAP = { c: [44, -25, Z_ST + 6], d: 210 };          // правая защёлка — крупно
 const fit = d => d * Math.max(1, .82 / camera.aspect);     // на узком экране отодвигаемся
 function flyTo(v, force) {
   if (!force && !$("autocam").checked) return;
@@ -430,16 +450,23 @@ function frame(now) {
     if (tag.textContent !== label) tag.textContent = label;
   } else tag.style.display = "none";
   if (anim) lis[anim.i].querySelector("i").style.width = (clamp(anim.t) * 100).toFixed(1) + "%";
-  if (work || (anim && anim.i === 7)) {
+  if (anim && anim.i === 8 && anim.t > .45) {
+    if (!snapCam) { snapCam = true; flyTo(VIEW_SNAP); }
+    read.style.display = "block";
+    read.textContent = S.snap > 0 ? "Язычки защёлок отогнуты на " + num(S.snap) + " мм (на экране — в 3 раза крупнее)"
+      : S.cover.dz <= 0 ? "Защёлкнулось: крючки за зацепами стойки" : "Крючки подходят к зацепам стойки";
+  } else if (work || (anim && anim.i === 7)) {
     read.style.display = "block";
     read.textContent = "Угол рукояти φ = " + num(S.phi) + "° · колокол опущен на " + num(Math.max(0, TRAVEL0 - yD(S.phi))) + " мм из 16";
-  } else read.style.display = "none";
+    snapCam = false;
+  } else { read.style.display = "none"; if (!anim || anim.i !== 8) snapCam = false; }
   requestAnimationFrame(frame);
 }
 sync();
 requestAnimationFrame(frame);
 window.__anim = { get state() { return { done, anim: anim && { i: anim.i, t: anim.t }, auto, paused, work: !!work, phi: lastS && lastS.phi, coverMode }; },
   set(n) { stopWork(); anim = null; auto = false; done = n; sync(); }, seek(i, t) { stopWork(); auto = false; done = i; anim = { i, t }; paused = true; sync(); },
+  get snap() { return lastS && lastS.snap; }, TONGUE,
   P, camera, controls, scene };
 })();
 </script>
