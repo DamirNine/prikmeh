@@ -135,6 +135,21 @@ CV_X0, CV_X1, CV_Y0, CV_Y1, CV_T, CV_Z = -12.0, 45.5, -53.0, 62.0, 2.0, 58.0   #
 # направляющей и её кронштейн и при надевании скользит по ним (вплотную вся стенка не подойдёт — мешает конец кулисы)
 CV_PAD_Y1 = -9.0
 CV_GAP = 1.0                                      # зазор между кулисой и краями паза
+# защёлки кожуха (15.11, расчёт — ../snap_calc.py): язычок — часть боковой стенки (2 мм) шириной SN_B и длиной SN_L,
+# отделён двумя прорезями SN_SLOT от задней кромки; на конце — крючок внутрь на SN_Y со скосом 30° к оси надвигания
+# (z) и удерживающей гранью 90° при z = SN_ZH. На стойке — зацеп: стойка-перемычка и козырёк над крючком (z SN_ZH…SN_ZL),
+# между козырьком и стенкой кожуха — 0,2 мм, между вершиной крючка и стойкой зацепа — 0,5 мм. Левая — выше утолщения стенки
+# (y 25…35), правая — ниже паза под кулису и нижнего упора (y −30…−20). Закрыть кожух — ≈ 7–12 Н, снять — отжать язычки
+SN_B, SN_L, SN_Y, SN_SLOT = 10.0, 30.0, 1.5, 1.0
+SN_ZH, SN_ZL = 4.0, 7.0                           # крючок z 0…4 (под козырьком), козырёк z 4…7
+SN_POS = {"left": (25.0, 35.0), "right": (-30.0, -20.0)}   # y язычков
+SN_CLR, SN_POST = 0.2, 1.0                        # зазор козырёк — стенка; толщина стойки зацепа
+SN_TAN = 0.5773502691896258                       # tg 30°
+
+
+def snap_x(side):
+    """x внутренней грани стенки и знак направления внутрь кожуха"""
+    return (CV_X0 + CV_T, 1.0) if side == "left" else (CV_X1 - CV_T, -1.0)
 
 # палец D (ось z, начало — задний торец): Ø10 — обойма 4 + зазор 1 + ползун 16 + 0,5 до уступа; резьба М8 × 1,25 на 10,5 мм —
 # шайба 1,6 + гайка 6,5 + выступ 2,4 (с фаской 1 мм). Сечение среза одно — между обоймой и ползуном, на Ø10
@@ -360,6 +375,23 @@ class Part:
         assert th.Create(), ("резьба не построена", self.p.name)
         return d.outside
 
+    def prism_xz(self, pts_xz, y0, y1):
+        """тело из профиля (x, z), выдавленного вдоль y от y0 до y1: эскиз на XOZ, смещённой к y0 (direction = y0 > 0;
+        эскиз: u = x, v = −z), выдавливание прямо — к +y (проверено по объёму и центру масс, 15.11)"""
+        pl = self.p.NewEntity(C3.o3d_planeOffset)
+        pd = pl.GetDefinition()
+        pd.SetPlane(self.p.GetDefaultEntity(C3.o3d_planeXOZ))
+        pd.offset, pd.direction = abs(y0), y0 > 0
+        pl.hidden = True
+        pl.Create()
+        sk = self.sketch(0, lambda s: s.poly_fixed([(x, -z) for x, z in pts_xz]), pl)
+        ex = self.p.NewEntity(C3.o3d_bossExtrusion)
+        ed = ex.GetDefinition()
+        ed.directionType = C3.dtNormal
+        ed.SetSideParam(True, C3.etBlind, y1 - y0, 0, False)
+        ed.SetSketch(sk)
+        assert ex.Create(), ("призма XZ не построена", self.p.name)
+
     def poly(self, pts, z0, z1, hv, dims, fix=0):
         self.extrude(self.sketch(z0, lambda s: s.poly(pts, hv, dims, fix)), z1 - z0)
 
@@ -495,6 +527,13 @@ def build_cover():
     p.box(CV_X0 + CV_T, E - 18.5, CV_Y0 + CV_T, CV_PAD_Y1, 0, CV_Z - CV_T)     # утолщение левой стенки до направляющей
     p.cut(lambda s: s.poly_fixed(cover_slot()), 0, -13.5 - Z_ST + CV_GAP)       # паз под кулису: до передней грани полосы (z = −13,5) + 1 мм
     p.cut(lambda s: s.rect(E - 6, CV_Y0 - 1, E + 6, CV_Y0 + CV_T + 1), 0, -Z_ST + 6)   # паз под шток Ø8 в дне
+    for side, (y0, y1) in SN_POS.items():                                        # защёлки (15.11)
+        xw, k = snap_x(side)                                                     # внутренняя грань стенки, «внутрь» = k
+        xa, xb = sorted((xw - k * (CV_T + 1), xw + k * 1))                       # прорезь — через всю стенку с запасом
+        for ya, yb in ((y0 - SN_SLOT, y0), (y1, y1 + SN_SLOT)):
+            p.cut(lambda s, xa=xa, xb=xb, ya=ya, yb=yb: s.rect(xa, ya, xb, yb), -1.0, SN_L)   # от задней кромки
+        dz = SN_Y / SN_TAN                                                       # скос 30° к оси z
+        p.prism_xz([(xw, 0.06), (xw + k * SN_Y, 0.06 + dz), (xw + k * SN_Y, SN_ZH), (xw, SN_ZH)], y0, y1)   # крючок
     return p.save(FILES["cover"])[1]
 
 
@@ -505,6 +544,12 @@ def build_stand():
     p.box(X_ST0 - 18, X_ST1 + 18, Y_ST0 - 20, Y_ST0, -B_ST, -B_ST + 92)     # основание 128 × 92 × 20: задняя кромка заподлицо с листом
                                                                       # (у стены), лист посередине по ширине, ось бутылки — по глубине
     p.cyl(0, 0, 5.0, 0, 20.5)                                         # ось O Ø10 — до передней грани кулисы
+    for side, (y0, y1) in SN_POS.items():         # зацепы защёлок кожуха (15.11): козырёк над крючком на стойке-перемычке
+        xw, k = snap_x(side)
+        xl0, xl1 = xw + k * SN_CLR, xw + k * (SN_CLR + SN_Y + 1.5)           # козырёк: от стенки кожуха +0,2 на 3 мм внутрь
+        xp0 = xl1 - k * SN_POST                                             # стойка зацепа — у внутреннего края козырька
+        p.box(min(xp0, xl1), max(xp0, xl1), y0, y1, 0, SN_ZH)
+        p.box(min(xl0, xl1), max(xl0, xl1), y0, y1, SN_ZH, SN_ZL)
     # выемка под пластину направляющей (УКП.00.002): глубина GD_PL_T из 12 мм — не насквозь
     p.cut(lambda s: s.rect(GD_X0 - POCKET_GAP, Y_BOT, GD_X1 + POCKET_GAP, GD_PL_Y1 + POCKET_GAP), -GD_PL_T, 0)
     p.poly([(LO_X0, LO_Y0), (LO_X1, LO_Y0), (LO_X1, lower_edge_y(PH_K, LO_X1)), (LO_X0, lower_edge_y(PH_K, LO_X0))],
@@ -537,7 +582,11 @@ GUIDE_COLOR = "#5b7896"                           # направляющая —
 
 
 def build_guide():
-    """направляющая ползуна: задняя пластина (в выемке стойки), два кронштейна и две планки у боковых граней ползуна"""
+    """направляющая ползуна: задняя пластина (в выемке стойки), два кронштейна и две планки у боковых граней ползуна.
+    ВНИМАНИЕ (15.11): рабочий файл «Детали/УКП.00.002 Направляющая.m3d» доработан пользователем в КОМПАСе (скругления «ванны»
+    R10/R14 — нормальной операцией «Скругление», 603,5 г); этот скрипт строит её приближённо (выдавливанием профиля) и при
+    запуске перезапишет файл пользователя — перестраивать только по просьбе: python kompas_build.py guide --force"""
+    assert "--force" in sys.argv, "направляющая доработана пользователем — не перезаписываю (ключ --force)"
     p = Part("Направляющая", "УКП.00.002", ST3, GUIDE_COLOR)
     p.box(GD_X0, GD_X1, Y_BOT, GD_PL_Y1, -GD_PL_T, 0)                 # пластина
     for xa, xb in ((GD_X0, E - 12.5), (E + 12.5, GD_X1)):
@@ -587,10 +636,10 @@ def build_polzun():
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] and set(sys.argv[1:]) <= {"polzun", "pin", "stand", "cover", "guide"}:   # перестроить только эти детали, массы остальных — как были
+    if sys.argv[1:] and set(a for a in sys.argv[1:] if a != "--force") <= {"polzun", "pin", "stand", "cover", "guide"}:   # перестроить только эти детали, массы остальных — как были
         mj = os.path.join(HERE, "parts_mass.json")
         m = json.load(open(mj, encoding="utf-8"))
-        for k in sys.argv[1:]:
+        for k in (a for a in sys.argv[1:] if a != "--force"):
             m[k] = {"polzun": build_polzun, "pin": build_pin, "stand": build_stand, "cover": build_cover, "guide": build_guide}[k]()
         json.dump(m, open(mj, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         # сопряжения сборки ссылаются на грани деталей; у перестроенной детали грани новые — старая сборка откроется с «!»

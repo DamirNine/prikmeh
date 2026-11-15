@@ -41,5 +41,7 @@ def shot(path, png, hide=()):
 
 
 shot(os.path.join(PARTS_DIR, FILES["guide"]), "направляющая.png")
+shot(os.path.join(PARTS_DIR, FILES["cover"]), "кожух_с_защёлками.png")
 shot(os.path.join(PARTS_DIR, FILES["stand"]), "стойка_с_выемкой.png")
 shot(os.path.join(HERE, "УКП.00.000 Укупориватель.a3d"), "сборка_без_кожуха.png", hide=("Кожух", "Бутылка"))
+shot(os.path.join(HERE, "УКП.00.000 Укупориватель.a3d"), "сборка_с_кожухом.png", hide=("Бутылка",))
