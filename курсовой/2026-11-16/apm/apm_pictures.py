@@ -3,7 +3,9 @@
 направляющая (УКП.00.002, окончательная форма) и палец D (резьба М10 × 1,5); рисуются временные копии в _копии/.
 Направляющей в рабочей модели ставится материал сталь 45 ГОСТ 1050-2013 ([σ] = 142 МПа; для Ст3 [σ] = 98 МПа < 136 МПа
 по APM): сохраняется через API5 SaveAs (IKompasDocument.Save у этой детали молча не сохраняет).
-    python apm_pictures.py [--pin]   (--pin — только картинка пальца)"""
+Исходный камень (обойма с губками, 09.11) — чистая картинка из 2026-11-09/kompas/Детали (в отчёте 09.11 была картинка
+APM-копии с сохранённой картой напряжений).
+    python apm_pictures.py [--pin | --kamen]   (только картинка пальца / исходного камня)"""
 import os, shutil, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "kompas"))
@@ -20,9 +22,10 @@ def open5(path):
     return d, A5.ksDocument3D(k5.TransferInterface(d, C.ksAPI5Auto, 0))
 
 
-def picture(key, png, dpi=200):
-    src = os.path.join(PARTS_DIR, FILES[key])
-    dst = os.path.join(TMP, FILES[key])
+def picture(key, png, dpi=200, src=None):
+    """key — деталь рабочей модели; src — другой файл детали (тогда key — только имя копии)"""
+    src = src or os.path.join(PARTS_DIR, FILES[key])
+    dst = os.path.join(TMP, os.path.basename(src))
     shutil.copy2(src, dst)
     d, d5 = open5(dst)
     p5 = d5.GetPart(C3.pTop_Part)
@@ -50,6 +53,10 @@ def picture(key, png, dpi=200):
     print("  картинка:", png)
 
 
+if "--kamen" in sys.argv:
+    picture("kamen", "камень_1_деталь.png", dpi=600,
+            src=os.path.join(HERE, "..", "..", "2026-11-09", "kompas", "Детали", "УКП.02.001 Камень.m3d"))
+    sys.exit()
 if "--pin" not in sys.argv:
     # материал направляющей
     path = os.path.join(PARTS_DIR, FILES["guide"])
