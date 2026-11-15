@@ -27,12 +27,12 @@ time.sleep(2)
 d5 = A5.ksDocument3D(k5.TransferInterface(doc, C.ksAPI5Auto, 0))
 top = qi(doc, A7.IKompasDocument3D).TopPart
 KEYS = {"Стойка": "stand", "Кулиса": "kulisa", "Камень": "kamen", "Палец": "pin", "Ползун": "polzun", "Шайба": "washer",
-        "Гайка": "nut", "Кожух": "cover", "Бутылка": "bottle"}
+        "Гайка": "nut", "Кожух": "cover", "Бутылка": "bottle", "Направляющая": "guide"}
 comp = {}
 for i in range(top.Parts.Count):
     p = qi(top.Parts.Item(i), A7.IPart7)
     comp[next(v for k, v in KEYS.items() if p.Name.startswith(k))] = p
-assert len(comp) == 9, list(comp)
+assert len(comp) == 10, list(comp)
 
 ang = cov = None
 mc = top.MateConstraints
@@ -131,12 +131,13 @@ if __name__ == "__main__":
         ("11_палец_в_камень", {"kamen", "pin"}, ("pin",), 41.63, 0.0),
         ("12_камень_на_кулису", {"kulisa", "kamen", "pin"}, ("kamen", "pin"), 41.63, 0.0, {"kamen", "pin"}),
         ("13_кулиса_на_ось", {"stand", "kulisa", "kamen", "pin"}, ("kulisa", "kamen", "pin"), 41.63, 0.0),
-        ("14_ползун", {"stand", "kulisa", "kamen", "pin", "polzun"}, ("polzun",), 41.63, 0.0, {"polzun", "kamen"}),
+        ("135_направляющая", {"stand", "kulisa", "kamen", "pin", "guide"}, ("guide",), 41.63, 0.0, {"guide", "kamen"}),
+        ("14_ползун", {"stand", "kulisa", "kamen", "pin", "guide", "polzun"}, ("polzun",), 41.63, 0.0, {"polzun", "kamen"}),
         ("15_шайба_гайка", MECH - {"cover"}, ("washer", "nut"), 41.63, 0.0, {"washer", "nut", "pin", "kamen"}),
         ("16_кожух_надевание", MECH, ("cover",), 41.63, 90.0),
         ("17_кожух_на_месте", MECH, ("cover",), 41.63, 0.0),
         ("18_бутылка", ALL, ("bottle",), PH_N, 0.0),
-    ] + [(f"p_{k}", {k}, (), 41.63, 0.0) for k in ("stand", "kulisa", "kamen", "pin", "polzun", "washer", "nut", "cover")]
+    ] + [(f"p_{k}", {k}, (), 41.63, 0.0) for k in ("stand", "kulisa", "kamen", "pin", "guide", "polzun", "washer", "nut", "cover")]
     for name, vis, new, ph, dz, *fc in F:
         if not only or name in only:
             frame(name, vis, new, ph, dz, fc[0] if fc else None)
