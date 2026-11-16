@@ -117,6 +117,21 @@ GD_RU_L, GD_RU_R = 10.0, 14.0                     # скругления «вн�
 GD_PL_T, GD_PL_Y1 = 6.0, -17.0                    # пластина: толщина (= глубина выемки), верх — ниже кулисы и камня на всём ходе
 GD_Z0, GD_Z1 = 26.0, 55.0                         # планки по z (у передней грани листа z = 0): спереди — 1 мм до кожуха (56)
 POCKET_GAP = 0.2                                  # зазор пластины в выемке по бокам и сверху (вниз — опирается на дно выемки)
+POCKET_R, GD_CH = 1.0, 1.0                        # 16.11: углы выемки R1 (минимальное скругление), на углах пластины — фаски 1 × 45°
+# винт М6 × 10 ГОСТ 17475-80 (потайной, шлиц) — направляющая к стойке (16.11, просьба пользователя: самая крупная резьба,
+# не насквозь, ближе к левому краю — там напряжения меньше). Ось — в координатах стойки и направляющей (они совпадают);
+# головка — в площадке на дне «ванны» (z = 0), в стойке — глухое отверстие (до задней грани 0,7 мм). Резьба — витками, как у
+# пальца М10 (под печать): у винта Ø5,8, впадина Ø4,6; в стойке отверстие Ø5,18, впадина Ø6,68 (зазор по виткам 0,2)
+SCR_X = E - 5.5                                   # ближе к левому кронштейну: площадка Ø12,4 — 0,8 мм до его грани
+SCR_Y = (Y_BOT + GD_PL_Y1) / 2                    # середина пластины по высоте — −33,38
+SCR_P, SCR_L = 1.0, 10.0                          # шаг; длина от торца головки
+SCR_RMAJ, SCR_RROOT = 2.9, 2.3                    # винт: наружный радиус, радиус впадины
+SCR_HEAD_R, SCR_HEAD_C = 5.65, 0.3                # головка Ø11,3: поясок 0,3, дальше конус 90°
+HOLE_R_BORE, HOLE_Z_BOT = 2.59, -11.3             # отверстие в стойке Ø5,18, глухое до z = −11,3 (стойка −12)
+HOLE_R_ROOT = SCR_RROOT + 0.866 * SCR_P + 0.2 / (2 * tan(radians(30)))   # впадина резьбы в стойке — 3,34
+GD_HOLE_R, GD_SPOT_R = 3.3, 6.2                   # направляющая: отверстие Ø6,6, площадка под головку Ø12,4
+SCR_Z_HELIX = -SCR_L - 1.0                        # начало винтовой линии винта (центр впадины) — целое число шагов
+HOLE_Z_HELIX = -10.5                              # у стойки — на полшага сдвинуто: впадины стойки против выступов винта
 
 
 def lower_edge_y(ph, x):
@@ -423,8 +438,9 @@ class Part:
     def hole(self, xc, yc, r):
         self.extrude(self.sketch(0, lambda s: s.circle(xc, yc, r)), 0, cut=True, both=True)
 
-    def fillet(self, points, r):
-        """скругление радиуса r рёбер, проходящих через точки (x, y, z) детали"""
+    def fillet(self, points, r, length=None):
+        """скругление радиуса r рёбер, проходящих через точки (x, y, z) детали; length — брать только рёбра такой длины
+        (в углу FindObjectsByPoint отдаёт и соседние рёбра)"""
         top = qi(k5.TransferInterface(self.doc, C.ksAPI7Dual, 0), A7.IKompasDocument3D).TopPart
         f = self.p.NewEntity(C3.o3d_fillet)
         fd = f.GetDefinition()
@@ -433,6 +449,8 @@ class Part:
         for x, y, z in points:
             objs = [qi(o, A7.IModelObject) for o in (top.FindObjectsByPoint(x, y, z, True) or ())]
             es = [o for o in objs if o.ModelObjectType == C3.o3d_edge]
+            if length:
+                es = [e for e in es if abs(qi(e, A7.IEdge).GetLength(1) - length) < 0.01]
             # одно и то же ребро может прийти дважды (по разу от каждой из двух граней) — проверяем, что это одно ребро
             lens = {round(qi(e, A7.IEdge).GetLength(1), 4) for e in es}
             assert len(es) >= 1 and len(lens) == 1, ("ребро под скругление", self.p.name, (x, y, z), len(es), lens)
@@ -464,7 +482,7 @@ ST3, ST45, GLASS = ("Ст3сп ГОСТ 380-2005", 7.85), ("Сталь 45 ГОС
 FILES = {"stand": "УКП.00.001 Стойка.m3d", "kulisa": "УКП.01.001 Кулиса.m3d", "kamen": "УКП.02.001 Камень.m3d",
          "pin": "УКП.02.002 Палец D.m3d", "polzun": "УКП.03.001 Ползун.m3d", "washer": "Шайба 10 ГОСТ 11371-78.m3d",
          "nut": "Гайка М10 ГОСТ 5915-70.m3d", "cover": "УКП.04.001 Кожух.m3d", "bottle": "УКП.05.001 Бутылка.m3d",
-         "guide": "УКП.00.002 Направляющая.m3d"}
+         "guide": "УКП.00.002 Направляющая.m3d", "screw": "Винт М6 × 10 ГОСТ 17475-80.m3d"}
 FASTENER = "#c3c8cf"                              # шайба и гайка — светлая сталь
 RIB_L, RIB_T, R_FIL_ST = 80.0, 8.0, 5.0           # рёбра стойки: вылет по основанию 80 (вся глубина основания), толщина 8; скругления R5
 RIB_H = round(RIB_L * tan(radians(60.0)), 1)      # высота по листу 103,9: наклон ребра 60° к основанию
@@ -502,6 +520,7 @@ def build():
 
     mass["washer"] = build_washer()
     mass["nut"] = build_nut()
+    mass["screw"] = build_screw()
 
     mass["polzun"] = build_polzun()
 
@@ -547,6 +566,8 @@ def build_stand():
         p.box(min(xl0, xl1), max(xl0, xl1), y0, y1, SN_ZH, SN_ZL)
     # выемка под пластину направляющей (УКП.00.002): глубина GD_PL_T из 12 мм — не насквозь
     p.cut(lambda s: s.rect(GD_X0 - POCKET_GAP, Y_BOT, GD_X1 + POCKET_GAP, GD_PL_Y1 + POCKET_GAP), -GD_PL_T, 0)
+    p.fillet([(x, y, -GD_PL_T / 2) for x in (GD_X0 - POCKET_GAP, GD_X1 + POCKET_GAP)            # 16.11: углы выемки R1
+              for y in (Y_BOT, GD_PL_Y1 + POCKET_GAP)], POCKET_R, length=GD_PL_T)
     p.poly([(LO_X0, LO_Y0), (LO_X1, LO_Y0), (LO_X1, lower_edge_y(PH_K, LO_X1)), (LO_X0, lower_edge_y(PH_K, LO_X0))],
            0, 20.5, ("H", "V", None, "V"), (0, 1, 3))                  # нижний упор: грань по нижнему ребру кулисы при φк
     p.poly([(HI_X0, upper_edge_y(PH_N, HI_X0)), (HI_X1, upper_edge_y(PH_N, HI_X1)), (HI_X1, HI_Y1), (HI_X0, HI_Y1)],
@@ -569,6 +590,13 @@ def build_stand():
     # скругления R5: внутренний угол лист–основание между рёбрами и 4 вертикальных угла основания
     p.fillet([((X_ST0 + X_ST1) / 2, Y_ST0, 0.0)] +
              [(x, Y_ST0 - 10, z) for x in (X_ST0 - 18, X_ST1 + 18) for z in (-B_ST, -B_ST + 92)], R_FIL_ST)
+    # 16.11: глухое отверстие М6 × 1 под винт направляющей — от дна выемки до z = −11,3, витками
+    p.cut(lambda s: s.circle(SCR_X, SCR_Y, HOLE_R_BORE), HOLE_Z_BOT, -GD_PL_T)
+    sp = helix(p, HOLE_Z_HELIX, -GD_PL_T + 1.0, SCR_RMAJ, SCR_P, SCR_X, SCR_Y)
+    r_in = HOLE_R_BORE - 0.2
+    hw = (HOLE_R_ROOT - r_in) * tan(radians(30))
+    assert HOLE_Z_HELIX - hw > HOLE_Z_BOT
+    thread_cut(p, [(SCR_X + HOLE_R_ROOT, HOLE_Z_HELIX), (SCR_X + r_in, HOLE_Z_HELIX - hw), (SCR_X + r_in, HOLE_Z_HELIX + hw)], sp, SCR_Y)
     return p.save(FILES["stand"])[1]
 
 
@@ -614,23 +642,40 @@ def build_guide():
 ST40X = ("Сталь 40Х ГОСТ 4543-2016", 7.85)          # палец: подшипниковая нагрузка (APM 192 МПа > 142 для стали 45)
 
 
-def helix(p, z0, z1, r_path):
-    """винтовая линия по оси z от z0 до z1, шаг P_THR, правая; начало — по оси x детали (у пальца и гайки одинаково)"""
+def helix(p, z0, z1, r_path, pitch=None, xc=0.0, yc=0.0):
+    """винтовая линия по оси, параллельной z (через xc, yc), от z0 до z1, шаг pitch (по умолчанию P_THR), правая; начало —
+    по направлению +x от оси (у пальца и гайки, у винта и отверстия в стойке одинаково)"""
+    pitch = pitch or P_THR
     sp = p.p.NewEntity(C3.o3d_cylindricSpiral)
     sd = sp.GetDefinition()
     sd.SetPlane(p.plane_z(z0))
-    sd.SetLocation(0.0, 0.0)
+    sd.SetLocation(xc, yc)
     sd.buildMode = 0
-    sd.diam, sd.step, sd.height, sd.turn = 2 * r_path, P_THR, z1 - z0, (z1 - z0) / P_THR
+    sd.diam, sd.step, sd.height, sd.turn = 2 * r_path, pitch, z1 - z0, (z1 - z0) / pitch
     sd.buildDir, sd.turnDir, sd.firstAngle = True, True, 0.0
     assert sp.Create(), "винтовая линия не построена"
+    sp.hidden = True                              # вспомогательная линия — не показывать в детали и сборке
+    sp.Update()
     return sp
 
 
-def thread_cut(p, tri_xz, sp):
+def xz_plane(p, y0):
+    """плоскость, параллельная XOZ, через y = y0 (эскиз на ней: u = x, v = −z — как на XOZ)"""
+    if abs(y0) < 1e-9:
+        return p.p.GetDefaultEntity(C3.o3d_planeXOZ)
+    pl = p.p.NewEntity(C3.o3d_planeOffset)
+    pd = pl.GetDefinition()
+    pd.SetPlane(p.p.GetDefaultEntity(C3.o3d_planeXOZ))
+    pd.offset, pd.direction = abs(y0), y0 > 0
+    pl.hidden = True
+    pl.Create()
+    return pl
+
+
+def thread_cut(p, tri_xz, sp, y0=0.0):
     """вырез треугольного профиля (x, z) по винтовой линии; профиль — ровно в начале линии (при sketchShiftType = 1 КОМПАС
-    переносит эскиз в начало траектории)"""
-    sk = p.sketch(0, lambda s: s.poly_fixed([(x, -z) for x, z in tri_xz]), p.p.GetDefaultEntity(C3.o3d_planeXOZ))
+    переносит эскиз в начало траектории); y0 — плоскость профиля (ось резьбы не на оси детали)"""
+    sk = p.sketch(0, lambda s: s.poly_fixed([(x, -z) for x, z in tri_xz]), xz_plane(p, y0))
     ce = p.p.NewEntity(C3.o3d_cutEvolution)
     cd = ce.GetDefinition()
     cd.sketchShiftType = 1
@@ -679,6 +724,21 @@ def build_nut():
     return p.save(FILES["nut"])[1]
 
 
+def build_screw():
+    """винт М6 × 10 ГОСТ 17475-80: потайная головка Ø11,3 (поясок 0,3 + конус 90°), шлиц 1,6 × 1,6, стержень Ø5,8 с фаской 0,5,
+    резьба М6 × 1 витками до конуса головки; начало — центр торца головки, стержень к −z (как ставится в стойку)"""
+    p = Part("Винт М6 × 10 ГОСТ 17475-80", "", ST45, FASTENER)
+    z_cone = -SCR_HEAD_C - (SCR_HEAD_R - SCR_RMAJ)
+    prof = [(0, 0), (SCR_HEAD_R, 0), (SCR_HEAD_R, -SCR_HEAD_C), (SCR_RMAJ, z_cone), (SCR_RMAJ, -SCR_L + 0.5),
+            (SCR_RMAJ - 0.5, -SCR_L), (0, -SCR_L)]
+    p.revolve(p.sketch_xz(lambda s: (s.contour([(r, -z) for r, z in prof]), s.axis(0, -5, 0, SCR_L + 5))))
+    p.cut(lambda s: s.rect(-SCR_HEAD_R - 1, -0.8, SCR_HEAD_R + 1, 0.8), -1.6, 0.5)            # шлиц
+    sp = helix(p, SCR_Z_HELIX, z_cone - 1.0, SCR_RMAJ, SCR_P)
+    hw = (SCR_RMAJ + 0.3 - SCR_RROOT) * tan(radians(30))
+    thread_cut(p, [(SCR_RROOT, SCR_Z_HELIX), (SCR_RMAJ + 0.3, SCR_Z_HELIX - hw), (SCR_RMAJ + 0.3, SCR_Z_HELIX + hw)], sp)
+    return p.save(FILES["screw"])[1]
+
+
 def build_polzun():
     """ползун: направляемая часть 24 × 40 × 16 с отверстием под палец D, шток Ø8 × L_ROD и головка Ø40 с конической
     горловиной (не плоское дно): вход Ø32,1 → Ø28,6 на длине хода обжима 6 мм, выше — цилиндр Ø28,6 до потолка полости.
@@ -691,11 +751,11 @@ def build_polzun():
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] and set(a for a in sys.argv[1:] if a != "--force") <= {"polzun", "pin", "washer", "nut", "stand", "cover", "guide"}:   # перестроить только эти детали, массы остальных — как были
+    if sys.argv[1:] and set(a for a in sys.argv[1:] if a != "--force") <= {"polzun", "pin", "washer", "nut", "stand", "cover", "guide", "screw"}:   # перестроить только эти детали, массы остальных — как были
         mj = os.path.join(HERE, "parts_mass.json")
         m = json.load(open(mj, encoding="utf-8"))
         for k in (a for a in sys.argv[1:] if a != "--force"):
-            m[k] = {"polzun": build_polzun, "pin": build_pin, "washer": build_washer, "nut": build_nut, "stand": build_stand, "cover": build_cover, "guide": build_guide}[k]()
+            m[k] = {"polzun": build_polzun, "pin": build_pin, "washer": build_washer, "nut": build_nut, "stand": build_stand, "cover": build_cover, "guide": build_guide, "screw": build_screw}[k]()
         json.dump(m, open(mj, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         # сопряжения сборки ссылаются на грани деталей; у перестроенной детали грани новые — старая сборка откроется с «!»
         print("ВАЖНО: закройте сборку без сохранения и пересоберите её: python kompas_assembly.py")
