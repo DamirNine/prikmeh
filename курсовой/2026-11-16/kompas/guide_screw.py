@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Рабочая направляющая УКП.00.002 (файл пользователя — не перестраивается скриптом, только дорабатывается), 16.11.
 Исходная версия — с разметкой под силу APM (guide_force_zone.py, коммит 1dce4c9); к ней:
-  — фаски 1 × 45° на четырёх вертикальных углах пластины (z −6…0): в углах выемки стойки — скругления R1; с фасками
+  — фаски GD_CH × 45° на четырёх вертикальных углах пластины (z −6…+2): в углах выемки стойки — скругления POCKET_R; с фасками
     пластина входит в выемку (у нижних углов — зазор по x 0,2, по y 0: пластина стоит на дне выемки);
   — площадка Ø11,2 на дне «ванны» (срезаны скругления выше z = 0) и отверстие М10 × 1,5 с витками насквозь через пластину —
     под установочный винт М10 × 10, который входит и в стойку (резьба: 6 мм в пластине + 4 мм в стойке).
@@ -9,7 +9,7 @@
     python guide_screw.py"""
 import os
 from math import radians, tan
-from kompas_build import (A7, C, C3, FILES, GD_CH, GD_PL_T, GD_PL_Y1, GD_SPOT_R, GD_X0, GD_X1, GD_Z_HELIX, GUIDE_COLOR,
+from kompas_build import (A7, C, C3, FILES, GD_CH, GD_CH_Z1, GD_PL_T, GD_PL_Y1, GD_SPOT_R, GD_X0, GD_X1, GD_Z_HELIX, GUIDE_COLOR,
                           HOLE_R_BORE, HOLE_R_ROOT, PARTS_DIR, SCR_P, SCR_RMAJ, SCR_X, SCR_Y, Y_BOT, Part, app, helix, k5, qi,
                           thread_cut)
 
@@ -38,7 +38,7 @@ assert abs(m0 - 603.5) < 0.1, ("направляющая уже доработа
 for cx, cy, sx, sy in ((GD_X0, Y_BOT, 1, 1), (GD_X1, Y_BOT, -1, 1), (GD_X0, GD_PL_Y1, 1, -1), (GD_X1, GD_PL_Y1, -1, -1)):
     a = GD_CH
     tri = [(cx - sx * 1.0, cy + sy * (a + 1.0)), (cx + sx * (a + 1.0), cy - sy * 1.0), (cx - sx * 1.0, cy - sy * 1.0)]
-    p.cut(lambda s, t=tri: s.poly_fixed(t), -GD_PL_T, 0.0)
+    p.cut(lambda s, t=tri: s.poly_fixed(t), -GD_PL_T, GD_CH_Z1)
 # площадка: всё, что выше z = 0 (скругления «ванны»), в круге Ø11,2; отверстие Ø8,78 насквозь через пластину
 p.cut(lambda s: s.circle(SCR_X, SCR_Y, GD_SPOT_R), 0.0, 10.5)
 p.cut(lambda s: s.circle(SCR_X, SCR_Y, HOLE_R_BORE), -GD_PL_T - 0.5, 0.5)
