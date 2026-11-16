@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """3D-анимация сборки укупоривателя — один самостоятельный HTML-файл (без интернета и без установки):
-геометрия деталей — из STL комплекта «Укупориватель — печать и сборка» (в координатах самих деталей), положения в
+геометрия деталей — из STL комплекта «Сборка» (в координатах самих деталей), положения в
 сборке — как в kompas/kompas_assembly.py
 (PLACE), three.js и OrbitControls встроены в файл из папки lib/.
     python build_anim.py"""
@@ -9,8 +9,8 @@ from math import tan, radians
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-STL = os.path.join(HERE, "Укупориватель — печать и сборка", "Детали для печати")
-OUT = os.path.join(HERE, "3D-сборка укупоривателя.html")
+STL = os.path.join(HERE, "Сборка", "Детали для печати")
+OUT = os.path.join(HERE, "Сборка", "3D-сборка укупоривателя.html")
 RJ = json.load(open(os.path.join(HERE, "..", "2026-11-04", "calc_v21.json"), encoding="utf-8"))
 
 # ---------------- размеры и положения — те же числа, что в kompas/kompas_build.py и kompas_assembly.py

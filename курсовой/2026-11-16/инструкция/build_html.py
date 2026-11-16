@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Инструкция по сборке: template.html + картинки img/*.png (встраиваются в файл) → «Укупориватель — печать и сборка/
+"""Инструкция по сборке: template.html + картинки img/*.png (встраиваются в файл) → «Сборка/
 Инструкция по сборке.html» — один самостоятельный файл, открывается в любом браузере без интернета.
     python make_images.py   (картинки из сборки КОМПАС)
     python export_stl.py    (STL деталей)
@@ -8,7 +8,7 @@ import base64, io, os, re
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PKG = os.path.join(HERE, "..", "Укупориватель — печать и сборка")
+PKG = os.path.join(HERE, "..", "Сборка")
 s = open(os.path.join(HERE, "template.html"), encoding="utf-8").read()
 
 
