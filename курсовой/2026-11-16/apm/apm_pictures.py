@@ -5,7 +5,7 @@
 по APM): сохраняется через API5 SaveAs (IKompasDocument.Save у этой детали молча не сохраняет).
 Исходный камень (обойма с губками, 09.11) — чистая картинка из 2026-11-09/kompas/Детали (в отчёте 09.11 была картинка
 APM-копии с сохранённой картой напряжений).
-    python apm_pictures.py [--pin | --kamen]   (только картинка пальца / исходного камня)"""
+    python apm_pictures.py [--pin | --kamen | --guide5]   (только картинка пальца / исходного камня / направляющей с винтом)"""
 import os, shutil, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "kompas"))
@@ -22,8 +22,9 @@ def open5(path):
     return d, A5.ksDocument3D(k5.TransferInterface(d, C.ksAPI5Auto, 0))
 
 
-def picture(key, png, dpi=200, src=None):
-    """key — деталь рабочей модели; src — другой файл детали (тогда key — только имя копии)"""
+def picture(key, png, dpi=200, src=None, view=None):
+    """key — деталь рабочей модели; src — другой файл детали (тогда key — только имя копии); view — матрица вида 4 × 4 по
+    строкам (ось X экрана, ось Y экрана, к наблюдателю, сдвиг), как IViewProjectionManager.Matrix3D"""
     src = src or os.path.join(PARTS_DIR, FILES[key])
     dst = os.path.join(TMP, os.path.basename(src))
     shutil.copy2(src, dst)
@@ -43,6 +44,9 @@ def picture(key, png, dpi=200, src=None):
     coll = d5.GetViewProjectionCollection()
     iso = next(coll.GetByIndex(i) for i in range(coll.GetCount()) if "зометр" in coll.GetByIndex(i).name)
     iso.SetCurrent()
+    if view:
+        vpm = qi(k5.TransferInterface(d5, C.ksAPI7Dual, 0), A7.IKompasDocument3D1).ViewProjectionManager
+        vpm.SetMatrix3D(view, vpm.Scale)
     d5.ZoomPrevNextOrAll(2)
     rp = d5.RasterFormatParam(); rp.Init()
     rp.format, rp.colorType, rp.extResolution, rp.extScale, rp.onlyThinLine = C.ksRasterFormatPNG, 3, dpi, 1.0, False
@@ -53,6 +57,13 @@ def picture(key, png, dpi=200, src=None):
     print("  картинка:", png)
 
 
+if "--guide5" in sys.argv:                          # 16.11: направляющая с отверстием М10 под установочный винт
+    import numpy as np
+    v = np.array([0.3, 0.35, 0.89]); v /= np.linalg.norm(v)            # взгляд спереди, чуть справа и сверху: видна «ванна» с отверстием
+    sx = np.cross([0, 1, 0], v); sx /= np.linalg.norm(sx)
+    sy = np.cross(v, sx)
+    picture("guide", "направляющая_5_с_винтом.png", view=(*sx, 0, *sy, 0, *v, 0, 0, 0, 0, 1))
+    sys.exit()
 if "--kamen" in sys.argv:
     picture("kamen", "камень_1_деталь.png", dpi=600,
             src=os.path.join(HERE, "..", "..", "2026-11-09", "kompas", "Детали", "УКП.02.001 Камень.m3d"))
