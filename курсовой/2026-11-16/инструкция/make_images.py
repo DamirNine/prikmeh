@@ -27,12 +27,12 @@ time.sleep(2)
 d5 = A5.ksDocument3D(k5.TransferInterface(doc, C.ksAPI5Auto, 0))
 top = qi(doc, A7.IKompasDocument3D).TopPart
 KEYS = {"Стойка": "stand", "Кулиса": "kulisa", "Камень": "kamen", "Палец": "pin", "Ползун": "polzun", "Шайба": "washer",
-        "Гайка": "nut", "Кожух": "cover", "Бутылка": "bottle", "Направляющая": "guide"}
+        "Гайка": "nut", "Кожух": "cover", "Бутылка": "bottle", "Направляющая": "guide", "Винт": "screw"}
 comp = {}
 for i in range(top.Parts.Count):
     p = qi(top.Parts.Item(i), A7.IPart7)
     comp[next(v for k, v in KEYS.items() if p.Name.startswith(k))] = p
-assert len(comp) == 10, list(comp)
+assert len(comp) == 11, list(comp)
 
 ang = cov = None
 mc = top.MateConstraints
@@ -118,6 +118,11 @@ def frame(name, visible, new=(), phi=41.63, cover=0.0, focus=None, view=None, cr
     print(f"  {name}: {im.size}")
 
 
+# винт сидит в «ванне» направляющей между планками — виден только почти спереди (как в анимации): взгляд (0,15; 0,28; 0,95)
+_v = (0.15, 0.28, 0.95); _n = sum(c * c for c in _v) ** 0.5; _v = tuple(c / _n for c in _v)
+_sx = (_v[2], 0.0, -_v[0]); _n = sum(c * c for c in _sx) ** 0.5; _sx = tuple(c / _n for c in _sx)         # (0,1,0) × v
+_sy = (_v[1] * _sx[2] - _v[2] * _sx[1], _v[2] * _sx[0] - _v[0] * _sx[2], _v[0] * _sx[1] - _v[1] * _sx[0])  # v × sx
+SCREW_VIEW = (*_sx, 0, *_sy, 0, *_v, 0, 0, 0, 0, 1)
 ALL = set(comp)
 MECH = ALL - {"bottle"}
 if __name__ == "__main__":
@@ -132,14 +137,17 @@ if __name__ == "__main__":
         ("12_камень_на_кулису", {"kulisa", "kamen", "pin"}, ("kamen", "pin"), 41.63, 0.0, {"kamen", "pin"}),
         ("13_кулиса_на_ось", {"stand", "kulisa", "kamen", "pin"}, ("kulisa", "kamen", "pin"), 41.63, 0.0),
         ("135_направляющая", {"stand", "kulisa", "kamen", "pin", "guide"}, ("guide",), 41.63, 0.0, {"guide", "kamen"}),
+        ("136_винт", {"stand", "kulisa", "kamen", "pin", "guide", "screw"}, ("screw",), 41.63, 0.0, {"screw", "guide"},
+         SCREW_VIEW),
         ("14_ползун", {"stand", "kulisa", "kamen", "pin", "guide", "polzun"}, ("polzun",), 41.63, 0.0, {"polzun", "kamen"}),
         ("15_шайба_гайка", MECH - {"cover"}, ("washer", "nut"), 41.63, 0.0, {"washer", "nut", "pin", "kamen"}),
         ("16_кожух_надевание", MECH, ("cover",), 41.63, 90.0),
         ("17_кожух_на_месте", MECH, ("cover",), 41.63, 0.0),
         ("18_бутылка", ALL, ("bottle",), PH_N, 0.0),
-    ] + [(f"p_{k}", {k}, (), 41.63, 0.0) for k in ("stand", "kulisa", "kamen", "pin", "guide", "polzun", "washer", "nut", "cover")]
+    ] + [(f"p_{k}", {k}, (), 41.63, 0.0) for k in ("stand", "kulisa", "kamen", "pin", "guide", "polzun", "washer", "nut", "cover")] + [
+        ("p_screw", {"screw"}, (), 41.63, 0.0)]
     for name, vis, new, ph, dz, *fc in F:
         if not only or name in only:
-            frame(name, vis, new, ph, dz, fc[0] if fc else None)
+            frame(name, vis, new, ph, dz, fc[0] if fc else None, fc[1] if len(fc) > 1 else None)
     doc.Close(0)                                                  # подсветка и скрытие — только для съёмки
     print("готово, сборка закрыта без сохранения")
