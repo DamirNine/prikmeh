@@ -21,15 +21,17 @@ Z_KUL, Z_KAM, Z_PIN = -21.5, -9.0, -13.0          # начала деталей 
 PIN_L1, WASHER_S, NUT_M = 23.5, 2.0, 8.0         # гладкая часть пальца Ø10 до передней грани шайбы; шайба 10; гайка М10
 Z_WASHER = Z_PIN + PIN_L1 - WASHER_S
 BOTTLE_H, BOTTLE_R = 226.5, 30.2
+SCR_X, SCR_Y = E - 5.5, (E * tan(radians(PH_K)) - 55 - 17.0) / 2   # установочный винт М10 направляющей (как в kompas_build.py)
 CAP_TOP, CAP_SKIRT, R_OBZH, R_K = 0.94, 5.4, 14.3, 16.05
 
 PARTS = [("stand", "1 Стойка", "Стойка", "#8a94a3"), ("kulisa", "2 Кулиса (рукоять)", "Кулиса", "#2d3540"),
          ("kamen", "3 Камень", "Камень", "#e8c99a"), ("pin", "4 Палец", "Палец", "#7fae6a"),
-         ("guide", "5 Направляющая", "Направляющая", "#5b7896"), ("polzun", "6 Ползун", "Ползун", "#3a4049"),
+         ("guide", "5 Направляющая", "Направляющая", "#5b7896"), ("screw", "10 Винт М10", "Винт М10", "#c3c8cf"),
+         ("polzun", "6 Ползун", "Ползун", "#3a4049"),
          ("washer", "7 Шайба", "Шайба", "#c3c8cf"), ("nut", "8 Гайка", "Гайка", "#c3c8cf"), ("cover", "9 Кожух", "Кожух", "#b03a2e")]
 BBOX = {"stand": (128.0, 410.0, 92.0), "kulisa": (509.0, 18.0, 20.0), "kamen": (20.0, 27.0, 15.5), "pin": (10.0, 10.0, 32.0),
         "guide": (43.0, 97.0, 61.0), "polzun": (40.0, 136.65, 40.0), "washer": (20.0, 20.0, 2.0), "nut": (16.0, 18.48, 8.0),
-        "cover": (57.5, 115.0, 58.0)}
+        "cover": (57.5, 115.0, 58.0), "screw": (9.7, 9.7, 10.0)}
 
 
 def read_stl(path):
@@ -138,7 +140,7 @@ for key, fname, title, color in PARTS:
     info.append(f"{title}: {len(tri)} треуг.")
 
 data = {"E": E, "PH_N": PH_N, "PH_K": PH_K, "PH0": PH0, "Z_ST": Z_ST, "Y_ST0": Y_ST0, "Z_KUL": Z_KUL, "Z_KAM": Z_KAM,
-        "Z_PIN": Z_PIN, "Z_WASHER": Z_WASHER, "Z_NUT": Z_WASHER + WASHER_S + NUT_M / 2, "BOTTLE_H": BOTTLE_H,
+        "Z_PIN": Z_PIN, "Z_WASHER": Z_WASHER, "SCR_X": SCR_X, "SCR_Y": SCR_Y, "Z_NUT": Z_WASHER + WASHER_S + NUT_M / 2, "BOTTLE_H": BOTTLE_H,
         "CAP_TOP": CAP_TOP, "CAP_SKIRT": CAP_SKIRT, "R_OBZH": R_OBZH, "R_K": R_K, "bottle": bottle_contour(),
         "parts": [{"key": k, "title": t, "color": c} for k, _, t, c in PARTS], "geo": geo, "tongues": tongues,
         "SNAP": {"L": SN_L, "Y": SN_Y, "ZH": SN_ZH, "ZL": SN_ZL, "CLR": SN_CLR, "RAMP0": 0.06, "RAMP1": 0.06 + SN_Y / tan(radians(30))}}

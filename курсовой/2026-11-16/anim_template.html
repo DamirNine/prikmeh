@@ -112,7 +112,7 @@ select{font:inherit;font-size:13.5px;border:1px solid #c5ccd6;border-radius:8px;
 /*__DATA__*/
 (function () {
 "use strict";
-const D2R = Math.PI / 180, { E, PH_N, PH_K, PH0, Z_ST, Y_ST0, Z_KUL, Z_KAM, Z_PIN, Z_WASHER, Z_NUT } = DATA;
+const D2R = Math.PI / 180, { E, PH_N, PH_K, PH0, Z_ST, Y_ST0, Z_KUL, Z_KAM, Z_PIN, Z_WASHER, Z_NUT, SCR_X, SCR_Y } = DATA;
 const yD = ph => E * Math.tan(ph * D2R), sD = ph => E / Math.cos(ph * D2R);   // высота пальца D и его расстояние от оси O вдоль кулисы
 const DZ = 150, S_FAR = 548, S_MID = 250;                 // вынос подсборки вперёд; камень за концом рукояти; середина кулисы
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -124,11 +124,12 @@ const $ = id => document.getElementById(id);
 
 // ------------------------------------------------------------------ шаги (как в «Инструкции по сборке»)
 const STEPS = [
-  { t: "Стойка", d: "Поставьте стойку основанием на стол, гладкой задней стороной к стене. На ней уже есть ось O, два упора рукояти, выемка под направляющую и два зацепа для кожуха.", dur: 2.2, hl: ["stand"], tag: "Стойка" },
+  { t: "Стойка", d: "Поставьте стойку основанием на стол. На ней уже есть ось O, два упора рукояти, выемка под направляющую с резьбовым отверстием М10 в дне и два зацепа для кожуха.", dur: 2.2, hl: ["stand"], tag: "Стойка" },
   { t: "Палец в камень", d: "Вставьте палец в переднюю стенку камня гладким широким концом, резьбой наружу. Вдавите до упора — торец вровень с внутренней стороной стенки.", dur: 3.2, hl: ["pin", "kamen"], tag: "Палец" },
   { t: "Камень на кулису", d: "Наденьте камень на кулису с дальнего конца рукояти и сдвиньте к середине. Палец и втулка кулисы смотрят в разные стороны.", dur: 3.6, hl: ["kamen", "pin"], tag: "Камень с пальцем" },
   { t: "Кулиса на ось O", d: "Сдвиньте камень к отверстию и наденьте кулису на ось O до упора в стойку: рукоять встаёт между упорами, палец смотрит вперёд.", dur: 4.4, hl: ["kulisa", "kamen", "pin"], tag: "Кулиса с камнем" },
-  { t: "Направляющая", d: "Задвиньте направляющую спереди: пластину — в выемку стойки до дна, планки — по обе стороны от камня с пальцем. Винтов не нужно: выемка держит её снизу и с боков, спереди — кожух.", dur: 3.4, hl: ["guide"], tag: "Направляющая" },
+  { t: "Направляющая", d: "Задвиньте направляющую спереди: пластину — в выемку стойки до дна (фаски на углах пластины проходят мимо скруглений в углах выемки), планки — по обе стороны от камня с пальцем. Резьбовые отверстия пластины и стойки встают соосно.", dur: 3.4, hl: ["guide"], tag: "Направляющая" },
+  { t: "Винт М10", d: "Вверните установочный винт М10 × 10 ключом-шестигранником S5 через пластину в стойку — до упора, заподлицо с площадкой. Винт держит направляющую в выемке: ползун давит на правую планку и иначе опрокидывал бы её вперёд. Ставится до ползуна — потом шток закроет к нему доступ.", dur: 3.8, hl: ["screw"], tag: "Винт М10" },
   { t: "Ползун", d: "Колоколом вниз вставьте брусок ползуна между планками направляющей и наденьте его отверстием на палец.", dur: 3.2, hl: ["polzun"], tag: "Ползун" },
   { t: "Шайба и гайка", d: "Наденьте шайбу на резьбовой конец пальца и навинтите гайку М10 до упора — дальше её не пустит конец резьбы. Шайба остаётся с зазором 0,5 мм, ползун свободно поворачивается на пальце.", dur: 3.6, hl: ["washer", "nut"], tag: "Шайба и гайка" },
   { t: "Проверка хода", d: "Поднимите рукоять до верхнего упора и плавно опустите до нижнего: ползун идёт строго вертикально, ход колокола — 16 мм.", dur: 4.6, hl: ["kulisa"], tag: "" },
@@ -143,9 +144,9 @@ function baseState(n) {                                    // состояние
     stand: { o: +(n >= 1), dy: 0 },
     kamen: { o: +(n >= 2), s: n <= 2 ? S_FAR : n === 3 ? S_MID : null, dz: n === 2 || n === 3 ? DZ : 0 },
     pin: { o: +(n >= 2), dz: 0 },
-    kulisa: { o: +(n >= 3), dz: n === 3 ? DZ : 0 }, guide: { o: +(n >= 5), dz: 0 },
-    polzun: { o: +(n >= 6), dz: 0 }, washer: { o: +(n >= 7), dz: 0 }, nut: { o: +(n >= 7), dz: 0, spin: 0 },
-    cover: { o: +(n >= 9), dz: 0 } };
+    kulisa: { o: +(n >= 3), dz: n === 3 ? DZ : 0 }, guide: { o: +(n >= 5), dz: 0 }, screw: { o: +(n >= 6), dz: 0, spin: 0 },
+    polzun: { o: +(n >= 7), dz: 0 }, washer: { o: +(n >= 8), dz: 0 }, nut: { o: +(n >= 8), dz: 0, spin: 0 },
+    cover: { o: +(n >= 10), dz: 0 } };
 }
 const MOVE = [
   (S, t) => { S.stand.o = seg(t, 0, .45); S.stand.dy = 80 * (1 - ease(t)); },
@@ -153,6 +154,9 @@ const MOVE = [
   (S, t) => { S.kulisa.o = seg(t, 0, .28); S.kulisa.dz = DZ + 40 * (1 - ease(seg(t, 0, .3))); S.kamen.s = lerp(S_FAR, S_MID, ease(seg(t, .3, 1))); S.kamen.dz = DZ; },
   (S, t) => { S.kamen.s = lerp(S_MID, sD(PH0), ease(seg(t, 0, .45))); S.kamen.dz = S.kulisa.dz = DZ * (1 - ease(seg(t, .45, 1))); },
   (S, t) => { S.guide.o = seg(t, 0, .22); S.guide.dz = DZ * (1 - ease(seg(t, .1, 1))); },
+  (S, t) => { S.screw.o = seg(t, 0, .18);                 // подлёт спереди до входа в резьбу, затем 10 мм ввинчивания: оборот на 1,5 мм
+              const dz = t < .38 ? 10 + 45 * (1 - ease(seg(t, .04, .38))) : 10 * (1 - ease(seg(t, .38, 1)));
+              S.screw.dz = dz; S.screw.spin = 2 * Math.PI * Math.min(dz, 10) / 1.5; },
   (S, t) => { S.polzun.o = seg(t, 0, .22); S.polzun.dz = DZ * (1 - ease(seg(t, .1, 1))); },
   (S, t) => { S.washer.o = seg(t, 0, .18); S.washer.dz = 60 * (1 - ease(seg(t, .05, .5)));
               S.nut.o = seg(t, .38, .55); const k = ease(seg(t, .42, 1)); S.nut.dz = 60 * (1 - k); S.nut.spin = 5 * Math.PI * (1 - k); },
@@ -283,6 +287,7 @@ function pose(S) {
   P.kamen.grp.position.set(sk * c, sk * s, Z_KAM + S.kamen.dz); P.kamen.grp.rotation.z = ph;
   P.pin.grp.position.set(sk * c, sk * s, Z_PIN + S.kamen.dz + S.pin.dz); P.pin.grp.rotation.z = ph;
   P.guide.grp.position.set(0, 0, Z_ST + S.guide.dz);
+  P.screw.grp.position.set(SCR_X, SCR_Y, Z_ST + S.screw.dz); P.screw.grp.rotation.z = S.screw.spin;
   P.polzun.grp.position.set(E, y, S.polzun.dz);
   P.washer.grp.position.set(E, y, Z_WASHER + S.washer.dz); P.washer.grp.rotation.z = ph;
   P.nut.grp.position.set(E, y, Z_NUT + S.nut.dz); P.nut.grp.rotation.z = ph + S.nut.spin;
@@ -305,9 +310,10 @@ function pose(S) {
   else if (i === 2) tagPos.copy(P.kamen.grp.position).add(tmp.set(0, 14, 8));
   else if (i === 3) tagPos.set(230 * c, 230 * s + 10, Z_KUL + S.kulisa.dz + 8);
   else if (i === 4) tagPos.set(E + 18, -48, Z_ST + S.guide.dz + 55);
-  else if (i === 5) tagPos.set(E, y + 22, S.polzun.dz + 8);
-  else if (i === 6) tagPos.copy(P.nut.grp.position).add(tmp.set(0, 11, 5));
-  else if (i === 8) tagPos.set(16, 64, Z_ST + S.cover.dz + 58);
+  else if (i === 5) tagPos.copy(P.screw.grp.position).add(tmp.set(0, 9, 4));
+  else if (i === 6) tagPos.set(E, y + 22, S.polzun.dz + 8);
+  else if (i === 7) tagPos.copy(P.nut.grp.position).add(tmp.set(0, 11, 5));
+  else if (i === 9) tagPos.set(16, 64, Z_ST + S.cover.dz + 58);
 }
 function current() {
   if (work) return workState(work.t);
@@ -323,19 +329,23 @@ const c0 = Math.cos(PH0 * D2R), s0 = Math.sin(PH0 * D2R);
 const VIEW_ALL = { c: [150, 15, 0], d: 1560 }, VIEW_WORK = { c: [95, -105, 0], d: 1330 };
 const VIEW_CLOSE = { c: [E, 0, 6], d: 300 };                 // крупный план механизма (кнопка «Крупно»)
 const VIEWS = [{ c: [14, -135, 0], d: 1180 }, { c: [S_FAR * c0, S_FAR * s0, DZ + 12], d: 300 }, { c: [335 * c0, 335 * s0, DZ], d: 960 },
-  { c: [150, 110, DZ / 2], d: 880 }, { c: [E, -30, 50], d: 620 }, { c: [E, -28, 62], d: 560 }, { c: [E, yD(PH0), 36], d: 250 }, VIEW_ALL,
+  { c: [150, 110, DZ / 2], d: 880 }, { c: [E, -30, 50], d: 620 }, { c: [SCR_X, SCR_Y, 10], d: 200, dir: [.15, .28, .95] }, { c: [E, -28, 62], d: 560 },
+  { c: [E, yD(PH0), 36], d: 250 }, VIEW_ALL,
   VIEW_ALL];                                                  // кожух — общим видом, без приближения
 let camTween = null;
 const fit = d => d * Math.max(1, .82 / camera.aspect);     // на узком экране отодвигаемся
 function flyTo(v, force) {
   if (!force && !$("autocam").checked) return;
-  camTween = { c0: controls.target.clone(), d0: camera.position.distanceTo(controls.target), c1: new THREE.Vector3(...v.c), d1: fit(v.d), t: 0 };
+  camTween = { c0: controls.target.clone(), d0: camera.position.distanceTo(controls.target), c1: new THREE.Vector3(...v.c), d1: fit(v.d), t: 0,
+    // dir — свой ракурс шага (винт в «ванне» виден только почти спереди); без dir направление взгляда пользователя сохраняется
+    u0: camera.position.clone().sub(controls.target).normalize(), u1: v.dir ? new THREE.Vector3(...v.dir).normalize() : null };
 }
 controls.addEventListener("start", () => { camTween = null; });
 function camStep(dt) {
   if (!camTween) return;
   camTween.t = Math.min(1, camTween.t + dt / .9);
-  const k = ease(camTween.t), dir = tmp.copy(camera.position).sub(controls.target).normalize();
+  const k = ease(camTween.t), dir = camTween.u1 ? tmp.copy(camTween.u0).lerp(camTween.u1, k).normalize()
+    : tmp.copy(camera.position).sub(controls.target).normalize();
   const d = lerp(camTween.d0, camTween.d1, k);
   controls.target.lerpVectors(camTween.c0, camTween.c1, k);
   camera.position.copy(controls.target).addScaledVector(dir, d);
@@ -452,11 +462,11 @@ function frame(now) {
     if (tag.textContent !== label) tag.textContent = label;
   } else tag.style.display = "none";
   if (anim) lis[anim.i].querySelector("i").style.width = (clamp(anim.t) * 100).toFixed(1) + "%";
-  if (anim && anim.i === 8 && S.cover.dz < 12) {
+  if (anim && anim.i === 9 && S.cover.dz < 12) {
     read.style.display = "block";
     read.textContent = S.snap > 0 ? "Язычки защёлок отогнуты на " + num(S.snap) + " мм (на экране — в 3 раза крупнее)"
       : S.cover.dz <= 0 ? "Защёлкнулось: крючки за зацепами стойки" : "Крючки подходят к зацепам стойки";
-  } else if (work || (anim && anim.i === 7)) {
+  } else if (work || (anim && anim.i === 8)) {
     read.style.display = "block";
     read.textContent = "Угол рукояти φ = " + num(S.phi) + "° · колокол опущен на " + num(Math.max(0, TRAVEL0 - yD(S.phi))) + " мм из 16";
   } else read.style.display = "none";
