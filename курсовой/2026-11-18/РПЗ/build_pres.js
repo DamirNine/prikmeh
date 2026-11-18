@@ -69,6 +69,7 @@ text(s, "Проектирование и исследование тангенс
      { x: 0.6, y: 1.05, w: 5.0, h: 2.0, fontSize: 28, bold: true, color: "FFFFFF" });
 text(s, "РК6-55Б · бригада №2", { x: 0.6, y: 3.55, w: 5.0, h: 0.35, fontSize: 15, color: "FFFFFF" });
 text(s, "Броцман Р.А., Девяткин Д.А., Калугин С.А., Корнеев А.Е., Салихова Е.Д.", { x: 0.6, y: 3.95, w: 5.0, h: 0.6, fontSize: 13, color: "CADCFC" });
+text(s, "Руководитель: Подчасов Е.О.", { x: 0.6, y: 4.55, w: 5.0, h: 0.3, fontSize: 13, color: "FFFFFF" });
 text(s, "МГТУ им. Н.Э. Баумана, кафедра РК6 · 2026", { x: 0.6, y: 4.9, w: 5.0, h: 0.3, fontSize: 11, color: "CADCFC" });
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 6.0, y: 1.2, w: 3.4, h: 4.0, fill: { color: "FFFFFF" }, line: { color: "FFFFFF" }, rectRadius: 0.12 });
 pic(s, "00_общий_вид.png", 6.15, 1.3, 3.1, 3.8);
