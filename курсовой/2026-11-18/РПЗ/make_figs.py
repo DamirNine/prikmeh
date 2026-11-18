@@ -49,9 +49,9 @@ def grid(items, cols, cell, out, label_font=FONT):
 
 
 # детали КОМПАС
-parts = [("p_stand", "1 Стойка"), ("p_kulisa", "2 Кулиса"), ("p_kamen", "3 Камень"), ("p_pin", "4 Палец D"),
-         ("p_guide", "5 Направляющая"), ("p_screw", "6 Винт М10"), ("p_polzun", "7 Ползун"), ("p_washer", "8 Шайба"),
-         ("p_nut", "9 Гайка М10"), ("p_cover", "10 Кожух")]
+parts = [("p_stand", "1 Стойка"), ("p_kulisa", "2 Кулиса"), ("p_kamen", "3 Камень"), ("p_pin", "4 Палец D"),   # номера — как у
+         ("p_guide", "5 Направляющая"), ("p_polzun", "6 Ползун"), ("p_washer", "7 Шайба"), ("p_nut", "8 Гайка М10"),  # файлов STL
+         ("p_cover", "9 Кожух"), ("p_screw", "10 Винт М10")]
 grid([(trim(Image.open(os.path.join(IMG, f + ".png"))), c) for f, c in parts], 5, (520, 560), "детали.png")
 for f in ("00_общий_вид", "01_без_кожуха", "02_рукоять_вверху", "03_рукоять_внизу"):
     trim(Image.open(os.path.join(IMG, f + ".png"))).save(os.path.join(OUT, f + ".png"), optimize=True)
