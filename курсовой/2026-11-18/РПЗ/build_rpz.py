@@ -16,7 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FIG = os.path.join(HERE, "fig")
 OUT = os.path.join(HERE, "РПЗ_укупориватель.docx")
 GROUP, YEAR = "РК6-55Б", "2026"
-STUDENTS = ["Девяткин Д.А.", "", "", "", ""]          # пустые — заполнить
+STUDENTS = ["Броцман Р.А.", "Девяткин Д.А.", "Калугин С.А.", "Корнеев А.Е.", "Салихова Е.Д."]   # бригада №2 (как в 4 семестре)
 HEAD = ""                                              # руководитель — заполнить
 TOPIC = "Проектирование и исследование тангенсного механизма ручного укупоривателя бутылки"
 
@@ -225,7 +225,7 @@ front.append(para(f"«____» ____________ {YEAR} г.", align=WD_ALIGN_PARAGRAPH.
 front.append(para("ЗАДАНИЕ", align=WD_ALIGN_PARAGRAPH.CENTER, bold=True, size=16, before=10, after=0, indent=False))
 front.append(para("на выполнение курсового проекта", align=WD_ALIGN_PARAGRAPH.CENTER, bold=True, size=14, indent=False))
 TASK = [("по дисциплине: ", "прикладная механика"),
-        (f"Студенты группы {GROUP}: ", ", ".join(s for s in STUDENTS if s) + ", ______________________"),
+        (f"Студенты группы {GROUP}, бригада №2: ", ", ".join(s for s in STUDENTS if s) + "."),
         ("Тема курсового проекта: ", TOPIC + "."),
         ("Направленность КП: ", "учебный."), ("Источник тематики: ", "кафедра."),
         ("График выполнения проекта: ", "25 % к 3 нед., 50 % к 8 нед., 75 % к 11 нед., 100 % к 14 нед.")]
