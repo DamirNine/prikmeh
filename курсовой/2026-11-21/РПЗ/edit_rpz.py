@@ -171,6 +171,21 @@ for prefix in ("[σ]=σт[n]", "Таблица 8 —"):
             t.text = t.text.replace("[n]", "n")
     assert "[n]" not in tx(p), tx(p)
 
+# запас устойчивости nу — тоже без скобок (в скобках — только допускаемые величины): «nу = Fкр/Fук ≥ [nу] = 3» → «… ≥ 3»,
+# в таблице 17 «[nу] = 3» → «nу ≥ 3»
+fixed = 0
+for p in body.iter(qn("w:p")):
+    ts = [t for t in p.iter(qn("w:t"), M + "t") if t.text]
+    for i in range(len(ts) - 3):
+        if ts[i].text.endswith("[") and ts[i + 1].text == "n" and ts[i + 2].text == "у" and ts[i + 3].text.startswith("]=3"):
+            if ts[i].text.endswith("≥["):                 # в формуле: оставить «≥ 3»
+                ts[i].text = ts[i].text[:-1]; ts[i + 1].text = ""; ts[i + 2].text = ""; ts[i + 3].text = ts[i + 3].text[2:]
+            else:                                         # в таблице: «nу ≥ 3»
+                ts[i].text = ts[i].text[:-1]; ts[i + 3].text = "≥3" + ts[i + 3].text[3:]
+            fixed += 1
+assert fixed == 2 and "[nу]" not in "".join(t.text or "" for t in body.iter(qn("w:t"), M + "t")), fixed
+print("nу без скобок:", fixed)
+
 # ------------------------------------------------------------- новые источники (22–24) — копии последнего пункта списка
 last = find("Autodesk Inventor Help.")
 srcs = ["ГОСТ 12.2.064-81 «ССБТ. Органы управления производственным оборудованием. Общие требования безопасности» — п. 1.5. "
