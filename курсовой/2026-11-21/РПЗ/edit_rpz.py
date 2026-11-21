@@ -20,7 +20,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC, OUT = os.path.join(HERE, "РПЗ_v13_исходник.docx"), os.path.join(HERE, "РПЗ_укупориватель.docx")
 FIG = os.path.join(HERE, "..", "Презентация", "fig")
-ARTOB = os.path.join(HERE, "артоболевский_схема.png")
+ARTOB = os.path.join(HERE, "артоболевский_тангенсный.jpg")   # 21.11: картинка от Корнеева А.Е. (вместо схемы из образца 52Б)
 M = "{http://schemas.openxmlformats.org/officeDocument/2006/math}"
 A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 
@@ -129,13 +129,16 @@ intro = next(p for p in paras() if tx(p) == "Введение")
 cap0 = find("Укупориватель без кожуха")
 pic0 = pic_par_before(cap0)
 lead_a = clone_text_par(find("Укупориватель предназначен"), intro,
-                        "Исходная схема проекта — кулисно-рычажный (тангенсный) механизм из справочника И.И. Артоболевского [24]: "
-                        "перемещение ползуна y = k · tg α. В проекте использована его кинематическая инверсия: кулиса качается на оси O "
-                        "стойки, камень скользит по кулисе и шарнирно связан с ползуном (раздел 3).")
-pa = picture_par(pic0, lead_a, ARTOB, int(extent_cx(pic0) * 1.15))
-cap_a = clone_text_par(cap0, pa, "Схема кулисно-рычажного механизма по [24]")
-for c in (cap_a, cap0):                                  # подписи введения — как подписи рисунков: по центру, без отступа
-    c.replace(c.find(qn("w:pPr")), copy.deepcopy(cap2.find(qn("w:pPr"))))
+                        "Исходная схема проекта — тангенсный механизм из справочника И.И. Артоболевского [24]: кулиса качается "
+                        "на неподвижном шарнире, палец ползуна скользит в её прорези, ползун движется в направляющих; перемещение "
+                        "ползуна пропорционально тангенсу угла поворота кулисы. В проекте ползун движется вертикально, а вместо "
+                        "прорези по кулисе скользит камень, шарнирно связанный с ползуном (раздел 3).")
+pa = picture_par(pic0, lead_a, ARTOB, int(extent_cx(pic2) * 0.42))
+cap_a = clone_text_par(cap0, pa, "Тангенсный механизм по [24]")
+cap_a.replace(cap_a.find(qn("w:pPr")), copy.deepcopy(cap2.find(qn("w:pPr"))))   # подпись — как у рисунков: по центру
+# 21.11 (Корнеев А.Е.): рендер «Укупориватель без кожуха…» во введении (стр. 6) убрать
+body.remove(pic0)
+body.remove(cap0)
 
 # ------------------------------------------------------------- 3) эргономика по ССБТ
 perg = find("Допустимая сила руки")
@@ -211,9 +214,9 @@ for i, p in enumerate(items, 1):
     t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
 assert tx(items[20]).startswith("21. Autodesk") and len(items) == 24, (len(items), tx(items[20])[:30])
 print("пунктов в списке источников:", len(items))
-# задание: объём РПЗ и число слайдов (страниц — после пересчёта в Word, 48)
+# задание: объём РПЗ и число слайдов (страниц — после пересчёта в Word, 47)
 pz = find("Расчётно-пояснительная записка на")
-assert replace_in(pz, "45", "48") and replace_in(pz, "12 слайдов", "13 слайдов") or "13 слайдов" in tx(pz), tx(pz)
+assert replace_in(pz, "45", "47") and replace_in(pz, "12 слайдов", "13 слайдов") or "13 слайдов" in tx(pz), tx(pz)
 print("задание:", tx(pz))
 d.save(OUT)
 print("сохранено:", OUT)
