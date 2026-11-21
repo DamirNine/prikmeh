@@ -12,8 +12,10 @@ from kompas_build import A5, A7, C, C3, PH_K, PH_N, app, k5, qi, rgb
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
-ASM = os.path.abspath(os.path.join(HERE, "..", "kompas", "УКП.00.000 Укупориватель.a3d"))
-IMG = os.path.join(HERE, "img")
+VAR_B = os.environ.get("UKP_VAR") == "B"          # 21.11: вариант Б — направляющая без планок; картинки — в img_B
+ASM = os.path.abspath(os.path.join(HERE, "..", "kompas", "УКП.00.000-01 Укупориватель (направляющая без планок).a3d" if VAR_B
+                                   else "УКП.00.000 Укупориватель.a3d"))
+IMG = os.path.join(HERE, "img_B" if VAR_B else "img")
 os.makedirs(IMG, exist_ok=True)
 HL = rgb("#ffb000")                                   # подсветка новой детали — янтарный
 

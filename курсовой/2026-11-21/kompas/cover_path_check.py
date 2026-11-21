@@ -7,7 +7,8 @@
 import os
 from kompas_build import A7, C3, PH_K, PH_N, app, qi
 
-ASM = os.path.join(os.path.dirname(os.path.abspath(__file__)), "УКП.00.000 Укупориватель.a3d")
+ASM = os.path.join(os.path.dirname(os.path.abspath(__file__)), "УКП.00.000-01 Укупориватель (направляющая без планок).a3d"
+                   if os.environ.get("UKP_VAR") == "B" else "УКП.00.000 Укупориватель.a3d")      # 21.11: вариант B
 doc = qi(app.Documents.Open(ASM, True, False), A7.IKompasDocument3D)
 top = doc.TopPart
 parts = [qi(top.Parts.Part(i), A7.IPart7) for i in range(top.Parts.Count)]

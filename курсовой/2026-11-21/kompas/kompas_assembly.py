@@ -22,7 +22,10 @@ from math import atan2, degrees, cos, sin, radians
 from kompas_build import (A7, B_ST, C, C3, E, FILES, GD_PL_T, HERE, NUT_M, PARTS_DIR, PH0, PH_K, PH_N, PH_Y, PIN_L1, SCR_X, SCR_Y, WASHER, Y_BOT,
                           Y_ST0, Z_ST, app, qi, yD)
 
-ASM = os.path.join(HERE, "УКП.00.000 Укупориватель.a3d")
+VAR_B = os.environ.get("UKP_VAR") == "B"          # 21.11: вариант B — направляющая без планок («стул»), см. variant_b.py
+ASM = os.path.join(HERE, "УКП.00.000-01 Укупориватель (направляющая без планок).a3d" if VAR_B else "УКП.00.000 Укупориватель.a3d")
+if VAR_B:
+    FILES = dict(FILES, guide="УКП.00.002-01 Направляющая (без планок).m3d")
 c0, s0 = cos(radians(PH0)), sin(radians(PH0))
 R0 = lambda x, y: (x * c0 - y * s0, x * s0 + y * c0)              # поворот на φ0 вокруг оси O
 D0 = (E, yD(PH0))
@@ -49,6 +52,8 @@ for k, f in FILES.items():
     c.UpdatePlacement(False)
     comp[k] = c
 PARTS_MASS = json.load(open(os.path.join(HERE, "parts_mass.json"), encoding="utf-8"))
+if VAR_B:
+    PARTS_MASS["guide"] = PARTS_MASS["guide_b"]
 for k, c in comp.items():                         # КОМПАС держит в памяти прежнюю модель файла, даже когда документы закрыты:
     m = qi(c, A7.IMassInertiaParam7).Mass         # после перестройки деталей, открывавшихся в этом сеансе, его надо перезапустить
     assert abs(m - PARTS_MASS[k]) < 0.5, ("в сборку попала старая модель — перезапустите КОМПАС", k, m, PARTS_MASS[k])
@@ -113,7 +118,10 @@ mate("направляющая по стойке: x", COIN, plane("guide", YZ), 
 mate("винт: торец заподлицо", COIN, plane("screw", XY), plane("stand", XY), align=CO)
 mate("винт по оси отверстия: x", DIST, plane("screw", YZ), plane("stand", YZ), SCR_X, CO)
 mate("винт по оси отверстия: y", DIST, plane("screw", XZ), plane("stand", XZ), abs(SCR_Y), CO)
-mate("ползун по планкам направляющей", COIN, face("polzun", 0, 15, -8), face("guide", E + 15.5, 0, 26), align=CO)
+if VAR_B:                                        # планок нет: средняя плоскость ползуна — в 34 мм перед листом стойки
+    mate("ползун в 34 мм перед стойкой", DIST, plane("stand", XY), plane("polzun", XY), 34.0, CO)   # порядок — к +z, как у кожуха
+else:
+    mate("ползун по планкам направляющей", COIN, face("polzun", 0, 15, -8), face("guide", E + 15.5, 0, 26), align=CO)
 mate("ось ползуна — на e от оси O", DIST, plane("polzun", YZ), plane("stand", YZ), E, CO)
 mate("обойма камня в 1 мм за ползуном", DIST, face("kamen", 7, 0, 0), face("polzun", 0, 15, -8), 1.0, OPP)
 # точки на гранях тел вращения — вне плоскости XZ детали (в ней шов цилиндра)
