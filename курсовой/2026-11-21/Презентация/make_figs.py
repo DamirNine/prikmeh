@@ -107,8 +107,9 @@ def scheme(values, name):
     # силы
     arrow(K + np.array([0, 1.5]), K + np.array([0, 0.12]), BLUE, lw=2.0, ms=15)
     ax.text(K[0] + 0.15, K[1] + 1.2, "P", color=BLUE, fontsize=17, ha="left", va="center", style="italic")
-    arrow((E_S, yh(PH) - 0.06), (E_S, yh(PH) - 0.62), RED, lw=2.0, ms=13)
-    ax.text(E_S - 0.45, yh(PH) - 0.35, r"$F_{\mathrm{ук}}$", color=RED, fontsize=17, ha="right", va="center")
+    # сопротивление укупориванию действует на ползун снизу вверх — как на расчётных схемах звеньев (21.11, замечание Корнеева)
+    arrow((E_S, yh(PH) - 0.75), (E_S, yh(PH) - 0.04), RED, lw=2.0, ms=13)
+    ax.text(E_S - 0.45, yh(PH) - 0.45, r"$F_{\mathrm{ук}}$", color=RED, fontsize=17, ha="right", va="center")
     # обозначения
     ax.text(-0.25, 0.25, "O", fontsize=16, ha="right", va="bottom")
     ax.text(E_S - 0.4, yD(PH) + 0.3, "D", fontsize=16, ha="right", va="bottom")
@@ -156,12 +157,31 @@ EQ = {
 }
 
 
+# 21.11 (Корнеев А.Е.: «формулы — нормально, красиво, не просто текстом»): формулы слайдов — математическим набором STIX
+FORMULAS = {
+    "ф_обжим.png": [r"$F_{\mathrm{ук}} = n\,\sigma_{\mathrm{раб}}\,A\,\ln\dfrac{D_k}{D_{\mathrm{обж}}} = 1974\ \mathrm{Н}$"],
+    "ф_синтез.png": [r"$S = e\,(\mathrm{tg}\,\varphi_{\mathrm{н}} - \mathrm{tg}\,\varphi_{\mathrm{к}})$",
+                     r"$A = \dfrac{1}{2}\,e\,S \rightarrow \min, \qquad \psi = \varphi_{\mathrm{н}} - \varphi_{\mathrm{к}} \rightarrow \min$"],
+    "ф_кинематика.png": [r"$y_D = e\,\mathrm{tg}\,\varphi$",
+                         r"$v_D = \dfrac{e\,\omega}{\cos^2\varphi}, \qquad a_D = \dfrac{e\,(\varepsilon + 2\,\omega^2\,\mathrm{tg}\,\varphi)}{\cos^2\varphi}$"],
+    "ф_равновесие.png": [r"$\sum F_x = 0, \qquad \sum F_y = 0, \qquad \sum M = 0$"],
+    "ф_сила_руки.png": [r"$P(\varphi) = \dfrac{F_{\mathrm{ук}}\,e}{L\,\cos^3\varphi}$"],
+    "ф_момент.png": [r"$|M_D| = P\,(L\cos\varphi - e)$"],
+    "ф_прочность.png": [r"$\sigma = \dfrac{N}{A} + \dfrac{M}{W} \leq [\sigma] = \dfrac{\sigma_{\mathrm{т}}}{n}, \quad n = 2{,}5$",
+                        r"$n_{\mathrm{у}} = \dfrac{F_{\mathrm{кр}}}{F_{\mathrm{ук}}} \geq 3$"],
+    "ф_инерция.png": [r"$\Phi = -m\,a_S, \qquad M_{\Phi} = -J_S\,\varepsilon, \qquad G = m\,g$"],
+}
+
+
 def equations():
-    for name, lines in EQ.items():
-        fig = plt.figure(figsize=(7.0, 0.62 * len(lines)))
+    plt.rcParams.update({"mathtext.fontset": "stix", "font.family": "STIXGeneral"})
+    for name, lines in list(EQ.items()) + list(FORMULAS.items()):
+        tall = any("dfrac" in x for x in lines)
+        fig = plt.figure(figsize=(7.0, (0.95 if tall else 0.62) * len(lines)))
         for i, s in enumerate(lines):
-            fig.text(0.0, 1 - (i + 0.5) / len(lines), s, fontsize=17, color=INK, ha="left", va="center")
+            fig.text(0.0, 1 - (i + 0.5) / len(lines), s, fontsize=19, color="#1E1E1E", ha="left", va="center")
         trim_save(fig, name, pad=10)
+    plt.rcParams.update({"mathtext.fontset": "custom", "font.family": "Calibri"})
 
 
 def links():
