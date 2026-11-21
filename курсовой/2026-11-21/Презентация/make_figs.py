@@ -55,7 +55,8 @@ def hatch_line(ax, p0, p1, side, n=7, h=0.17):
 
 # ---------------------------------------------------------------- кинематическая схема
 PH_N, PH_K, PH_OB, PH = RJ["phi_n"], RJ["phi_k"], RJ["phi_ob"], 48.0
-E_S, L_S, HK = 2.2, 7.6, 5.0                      # без масштаба: e увеличено относительно L
+E_S, L_S, HK = 2.2, 7.6, 5.0
+R_HINGE = 0.17                                    # радиус дуги звена 3 вокруг пальца D                      # без масштаба: e увеличено относительно L
 
 
 def scheme(values, name):
@@ -81,6 +82,9 @@ def scheme(values, name):
         r.set_transform(Affine2D().rotate_deg(ph).translate(E_S, yD(ph)) + ax.transData); ax.add_patch(r)
         ax.add_patch(Circle((E_S, yD(ph)), 0.085, fc="white", ec=INK, lw=1.2 if main else THIN, ls="-" if main else PHANTOM,
                             zorder=7 if main else 5))
+        # шарнир D (2–3), как на структурной схеме (21.11, замечание Корнеева): звено 3 огибает палец дугой внутри камня
+        ax.add_patch(Arc((E_S, yD(ph)), 2 * R_HINGE, 2 * R_HINGE, theta1=-90, theta2=90, color=INK, lw=1.4 if main else THIN,
+                         ls="-" if main else PHANTOM, zorder=7 if main else 5))
 
     arrow((-0.9, 0), (8.6, 0), INK, lw=1.0, ms=11); ax.text(8.55, -0.35, "x", fontsize=15, ha="center", va="top", style="italic")
     arrow((0, -0.62), (0, 7.7), INK, lw=1.0, ms=11); ax.text(-0.3, 7.6, "y", fontsize=15, ha="right", va="center", style="italic")
@@ -98,8 +102,8 @@ def scheme(values, name):
     stone(PH, True)
     # ползун 3 в неподвижной направляющей: штриховка обеих стенок — в одну сторону («/»), снаружи
     yh = lambda ph: yD(ph) - HK
-    ax.plot([E_S, E_S], [yD(PH) - 0.085, yh(PH)], color=INK, lw=MAIN, zorder=5, solid_capstyle="butt")
-    ax.plot([E_S, E_S], [yD(PH) + 0.1, yD(PH_N) - 0.1], color=INK, lw=THIN, ls=PHANTOM, zorder=3)
+    ax.plot([E_S, E_S], [yD(PH) - R_HINGE, yh(PH)], color=INK, lw=MAIN, zorder=5, solid_capstyle="butt")
+    ax.plot([E_S, E_S], [yD(PH) + R_HINGE + 0.02, yD(PH_N) - R_HINGE], color=INK, lw=THIN, ls=PHANTOM, zorder=3)
     ax.plot([E_S, E_S], [yh(PH), yh(PH_K)], color=INK, lw=THIN, ls=PHANTOM, zorder=3)
     gy0, gy1 = -1.0, -0.2
     hatch_line(ax, (E_S - 0.2, gy0), (E_S - 0.2, gy1), (-1, -1), n=5)
@@ -233,7 +237,7 @@ def sections():
     ax.add_patch(Rectangle((0, 0), 8, 18, fc="white", ec=INK, lw=1.8, hatch="///"))
     dimh(0, 8, -2.5, "8"); dimv(10.5, 0, 18, "18")
     ax.text(4, 23.5, "Кулиса", ha="center", fontsize=17, weight="bold", color=INK)
-    ax.text(4, 21.0, "полоса 8 × 18, Ст3сп", ha="center", fontsize=14, color=INK2)
+    ax.text(4, 21.0, "полоса 8 · 18, Ст3сп", ha="center", fontsize=14, color=INK2)
     # шток Ø8
     cx = 32
     ax.add_patch(Circle((cx, 9), 4, fc="white", ec=INK, lw=1.8, hatch="///"))

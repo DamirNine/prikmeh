@@ -45,8 +45,23 @@ pres.defineSlideMaster({
 const ratio = (f) => SIZES[f][0] / SIZES[f][1];
 let objN = 0;
 const nm = (s) => `${s}_${++objN}`;
-const nb = (t) => typeof t !== "string" ? t : t.replace(/ ([≤≥=×·<>]) /g, " $1 ").replace(/ →/g, " →")
-  .replace(/([≤≥]) /g, "$1 ").replace(/(\d) /g, "$1 ");
+const nb = (t) => typeof t !== "string" ? t : t.replace(/(?<!М10) × (?!1,5)/g, " · ").replace(/ ([≤≥=×·<>]) /g, " $1 ")
+  .replace(/ →/g, " →").replace(/([≤≥]) /g, "$1 ").replace(/(\d) /g, "$1 ");
+// 21.11 (Корнеев А.Е.): индексы — нижними индексами, а не текстом: φн, Pmax, R12, Fук, σт, nу, |MD| …
+const SUB_RE = /(?<![A-Za-zА-Яа-яЁё])(φ|ω|σ|ε|ψ|P|R|v|y|n|F|M|B|L)(max|min|треб|доп|обж|раб|ук|кр|н|к|у|т|D|12|10|30|23)(?![А-Яа-яЁёA-Za-z0-9])/g;
+function rich(t, opt = {}) {
+  t = nb(t);
+  const runs = []; let last = 0;
+  for (const m of t.matchAll(SUB_RE)) {
+    if (m.index > last) runs.push({ text: t.slice(last, m.index), options: { ...opt } });
+    runs.push({ text: m[1], options: { ...opt } });
+    runs.push({ text: m[2], options: { ...opt, subscript: true } });
+    last = m.index + m[0].length;
+  }
+  if (last < t.length || !runs.length) runs.push({ text: t.slice(last), options: { ...opt } });
+  return runs;
+}
+const brk = (runs) => { runs[runs.length - 1].options.breakLine = true; return runs; };
 
 function pic(slide, f, x, y, w, h, { card = true, pad = 0.08, caption = null, capH = 0.32, align = "center" } = {}) {
   const ih = caption ? h - capH : h;
@@ -66,15 +81,15 @@ function stat(slide, x, y, w, h, big, small, { bigSize = 22 } = {}) {
   slide.addShape(pres.shapes.RECTANGLE, { x, y, w, h, fill: { color: "FFFFFF" }, line: { color: LINEC, width: 0.75 },
     objectName: nm("значение") });
   slide.addText([
-    { text: nb(big), options: { fontSize: bigSize, bold: true, color: C.text2, breakLine: true } },
-    { text: nb(small), options: { fontSize: 12, color: C.accent2 } },
+    ...brk(rich(big, { fontSize: bigSize, bold: true, color: C.text2 })),
+    ...rich(small, { fontSize: 12, color: C.accent2 }),
   ], { x: x + 0.18, y: y + 0.05, w: w - 0.36, h: h - 0.1, valign: "middle", margin: 0, paraSpaceAfter: 2, isTextBox: true,
        objectName: nm("число") });
 }
 function result(slide, text, y = 6.25) {
   slide.addShape(pres.shapes.RECTANGLE, { x: M, y, w: W - 2 * M, h: 0.55, fill: { color: LIGHT }, line: { color: NAVY, width: 1 },
     objectName: nm("вывод") });
-  slide.addText([{ text: "Результат: ", options: { bold: true, color: C.text2 } }, { text: nb(text), options: { color: C.text1 } }],
+  slide.addText([{ text: "Результат: ", options: { bold: true, color: C.text2 } }, ...rich(text, { color: C.text1 })],
     { x: M + 0.2, y, w: W - 2 * M - 0.4, h: 0.55, fontSize: 15, valign: "middle", margin: 0, isTextBox: true, objectName: nm("текст_вывода") });
 }
 // «Постановка»: строки (заголовок, текст[, формула-картинка, высота])
@@ -88,7 +103,7 @@ function setup(slide, rows, { x = M, y = 1.25, w = 3.65, h = 4.8 } = {}) {
     for (const wd of body.split(" ")) { if (cur && cur + 1 + wd.length > 33) { lines++; cur = wd.length; } else cur += (cur ? 1 : 0) + wd.length; }
     const th = 0.27 + 0.235 * lines;
     slide.addText([{ text: nb(head), options: { bold: true, color: C.text1, fontSize: 13, breakLine: true } },
-                   { text: nb(body), options: { color: C.text1, fontSize: 13 } }],
+                   ...rich(body, { color: C.text1, fontSize: 13 })],
       { x: x + 0.22, y: cy, w: w - 0.44, h: th, valign: "top", margin: 0, isTextBox: true, objectName: nm("строка") });
     cy += th + 0.06;
     if (f) { formula(slide, f, x + 0.22, cy, w - 0.44, fh); cy += fh + 0.12; }
@@ -96,10 +111,10 @@ function setup(slide, rows, { x = M, y = 1.25, w = 3.65, h = 4.8 } = {}) {
   }
 }
 const content = (title) => { const s = pres.addSlide({ masterName: "CONTENT" }); s.addText(title, { placeholder: "title" }); return s; };
-const txt = (s, t, o) => s.addText(nb(t), Object.assign({ fontSize: 15, color: C.text1, margin: 0, valign: "top", isTextBox: true,
+const txt = (s, t, o) => s.addText(rich(t), Object.assign({ fontSize: 15, color: C.text1, margin: 0, valign: "top", isTextBox: true,
                                                           objectName: nm("текст") }, o));
 const hdr = (t) => ({ text: t, options: { bold: true, color: "FFFFFF", fill: { color: NAVY } } });
-const b = (t) => ({ text: nb(t), options: { bold: true, color: C.text2 } });
+const b = (t) => ({ text: rich(t, { bold: true, color: C.text2 }), options: {} });
 const TBL = { fontSize: 13, color: TEXT, border: { type: "solid", pt: 0.75, color: LINEC }, fill: { color: "FFFFFF" },
               valign: "middle", margin: [0, 0.07, 0, 0.07] };
 
@@ -175,7 +190,7 @@ const TBL = { fontSize: 13, color: TEXT, border: { type: "solid", pt: 0.75, colo
   txt(s, "Требуется: найти размеры механизма (e, L, φн, φк), нагрузки и сечения звеньев; построить модель и прототип",
       { x, y: 5.1, w: W - M - x, h: 0.5, fontSize: 14 });
   formula(s, "ф_обжим.png", x, 5.55, 4.0, 0.58);
-  result(s, "расчётное усилие укупоривания Fук = 1974 Н (сечение юбки крышки, σт жести 415 МПа)");
+  result(s, "усилие укупоривания Fук = 1974 Н");
   s.addNotes("Механизм: стойка, кулиса с рукоятью, камень и ползун. Исходные данные — из ГОСТов на бутылку, крышку и эргономику. " +
     "Усилие укупоривания по сечению юбки крышки — 1974 ньютона. Размеры схемы на этом этапе неизвестны.");
 }
@@ -190,7 +205,7 @@ const TBL = { fontSize: 13, color: TEXT, border: { type: "solid", pt: 0.75, colo
   const x = 4.45;
   pic(s, "синтез_площадь.png", x, 1.25, 4.7, 4.8, { caption: "Площадь треугольника при разных окнах" });
   pic(s, "синтез_уступки.png", x + 4.9, 1.25, W - M - x - 4.9, 4.8, { caption: "Минимальная площадь и уступки" });
-  result(s, "ψ = 36,8°, окно 59,5° → 22,7°, e = 12,5 мм; уступки по обоим критериям — 25,3 %");
+  result(s, "окно качания 59,5° → 22,7° (ψ = 36,8°), e = 12,5 мм");
   s.addNotes("Синтез: подбирали окно качания кулисы и расстояние e. Компактность и малый угловой ход противоречат друг другу, " +
     "поэтому выбрали точку равных относительных уступок: угловой ход 36,8 градуса, e = 12,5 миллиметра.");
 }
@@ -204,7 +219,7 @@ const TBL = { fontSize: 13, color: TEXT, border: { type: "solid", pt: 0.75, colo
   const x = 4.45;
   pic(s, "омега.png", x, 1.25, 4.5, 4.8, { caption: "Угловая скорость кулисы ω(t)" });
   pic(s, "ползун_кинематика.png", x + 4.7, 1.25, W - M - x - 4.7, 4.8, { caption: "Координата, скорость, ускорение ползуна" });
-  result(s, "рабочий ход 0,9 с, касание крышки при t = 0,4 с; ε = +3,2 / −3,0 рад/с², |vD| ≤ 31,7 мм/с");
+  result(s, "ход головки 16 мм за 0,9 с, ωmax = 1,4 рад/с");
   s.addNotes("Закон движения кулисы — трапеция угловой скорости с максимумом 1,4 радиана в секунду; ход занимает 0,9 секунды. " +
     "Скорости и ускорения ползуна получены дифференцированием функции положения yD = e tg φ.");
 }
@@ -212,7 +227,7 @@ const TBL = { fontSize: 13, color: TEXT, border: { type: "solid", pt: 0.75, colo
 // ------------------------------------------------------------------ 6. Первичный силовой — по звеньям
 {
   const s = content("Первичный силовой расчёт: по звеньям");
-  txt(s, "Постановка: без масс и трения, 9 уравнений на 40 001 положение; для каждого звена:",
+  txt(s, "Постановка: без учёта масс и трения; уравнения равновесия звеньев:",
       { x: M, y: 1.14, w: 8.2, h: 0.32, fontSize: 13, color: C.accent2 });
   formula(s, "ф_равновесие.png", 8.95, 1.12, 3.75, 0.34);
   const cw = (W - 2 * M - 2 * 0.25) / 3;
@@ -225,7 +240,7 @@ const TBL = { fontSize: 13, color: TEXT, border: { type: "solid", pt: 0.75, colo
     pic(s, fig, x + 0.1, 2.02, cw - 0.2, 2.3, { card: false, pad: 0.04 });
     pic(s, eq, x + 0.1, 4.4, cw - 0.2, 1.6, { card: false, pad: 0.03 });
   });
-  result(s, "Pmax = 112,8 Н < 120 Н при φу = 41,6°; R12 = 2515 Н; длина рукояти 470 → 500 мм");
+  result(s, "Pmax = 112,8 Н < 120 Н, длина рукояти L = 500 мм");
   s.addNotes("Силовой расчёт по звеньям: для кулисы, камня и ползуна — по три уравнения равновесия. Максимальная сила руки " +
     "112,8 ньютона, меньше допустимых 120.");
 }
@@ -241,7 +256,7 @@ const TBL = { fontSize: 13, color: TEXT, border: { type: "solid", pt: 0.75, colo
   stat(s, x, 1.25, w, 1.45, "40,8 Н·м", "|M| под камнем, точка D");
   stat(s, x, 2.85, w, 1.45, "2430,5 Н", "поперечная сила на участке O–D");
   stat(s, x, 4.45, w, 1.45, "−75,0 Н", "продольная сила в кулисе");
-  result(s, "опасное сечение кулисы — под камнем (точка D); в точке K момент равен нулю");
+  result(s, "опасное сечение — под камнем: |MD| = 40,8 Н·м");
   s.addNotes("Кулису рассматриваем как балку длиной 500 миллиметров. Наибольший изгибающий момент — 40,8 ньютон-метра под камнем.");
 }
 
@@ -254,12 +269,12 @@ const TBL = { fontSize: 13, color: TEXT, border: { type: "solid", pt: 0.75, colo
   pic(s, "сечения.png", 4.45, 1.25, W - M - 4.45, 2.15, { caption: "Принятые сечения" });
   s.addTable([
     [hdr("Элемент"), hdr("Проверка"), hdr("МПа"), hdr("Допуск")],
-    ["Кулиса 8 × 18, Ст3сп", "изгиб", b("94,8"), "98"],
+    ["Кулиса 8 · 18, Ст3сп", "изгиб", b("94,8"), "98"],
     ["Шток Ø8, Ст3сп", "сжатие / устойчивость", b("39,3 / nу = 6,2"), "98 / ≥ 3"],
     ["Ось O Ø10 / палец D Ø10", "срез", b("31,0 / 32,0"), "50"],
     ["Отверстие кулисы со ступицей", "смятие", b("12,2"), "24"],
   ], Object.assign({ x: 4.45, y: 3.62, w: W - M - 4.45, colW: [3.0, 2.2, 1.75, 1.33], rowH: 0.45, fontSize: 14, objectName: "проверки" }, { ...TBL, fontSize: 14 }));
-  result(s, "кулиса 8 × 18 (Ст3сп), шток Ø8, ось и палец Ø10; без ступицы смятие 30,4 > 24 МПа → ступица Ø16 × 12");
+  result(s, "кулиса 8 × 18 (Ст3сп), шток Ø8, ось и палец Ø10");
   s.addNotes("Сечения подбирали по условию прочности с запасом 2,5 и по сортаменту. Кулиса — полоса 8 на 18 из Ст3сп. " +
     "Шток диаметром 8 проходит по устойчивости с запасом 6,2. Без ступицы отверстие кулисы не проходило по смятию.");
 }
@@ -272,7 +287,7 @@ const TBL = { fontSize: 13, color: TEXT, border: { type: "solid", pt: 0.75, colo
             ["Критерий", "изменение силы руки и реакций; проверка принятых сечений"]]);
   pic(s, "схемы_уточняющий.png", 4.45, 1.25, 3.75, 4.8, { caption: "Схемы с силами тяжести и инерции" });
   pic(s, "сила_руки_t.png", 8.4, 1.25, W - M - 8.4, 4.8, { caption: "Сила руки P(t): первичный, уточнённый, допустимая" });
-  result(s, "сила руки 112,8 → 109,9 Н (−2,6 %), реакции меняются менее чем на 1 % — сечения сохраняются");
+  result(s, "Pmax = 109,9 Н (−2,6 %), сечения сохраняются");
   s.addNotes("Добавили силы тяжести и инерции кулисы и ползуна. Максимум силы руки снизился на 2,6 процента, обе кривые ниже 120 ньютонов.");
 }
 
@@ -295,35 +310,28 @@ const TBL = { fontSize: 13, color: TEXT, border: { type: "solid", pt: 0.75, colo
     ["Направляющая", b("920 → 136,2"), "142"], ["Палец D", b("192"), "314"],
   ], Object.assign({ x: tx, y: 1.25, w: W - M - tx, colW: [1.5, 1.08, 0.503], rowH: 0.45 }, TBL, { fontSize: 12, objectName: "мкэ_таблица" }));
   stat(s, tx, 4.3, W - M - tx, 1.3, "−22 % массы", "кулиса 577,6 → 449,7 г");
-  result(s, "после доработки σmax ≤ [σ] у всех деталей; материалы: Ст3сп, сталь 45, 40Х — по напряжениям");
+  result(s, "после доработки σmax ≤ [σ] у всех деталей");
   s.addNotes("По картам напряжений доработали детали: в камне и направляющей пики снизились в 6–7 раз, в ползуне вдвое, " +
     "кулиса стала легче на 22 процента без роста напряжений.");
 }
 
-// ------------------------------------------------------------------ 11. Прототипирование
+// ------------------------------------------------------------------ 11. Прототипирование: детали до и после МКЭ (замечание Корнеева)
 {
-  const s = content("Прототипирование: детали до и после");
-  const y = 1.25, h = 3.8;
-  txt(s, "Направляющая", { x: M, y, w: 4, h: 0.3, fontSize: 14, bold: true, color: C.text2 });
-  pic(s, "до_направляющая.png", M, y + 0.35, 2.05, h - 0.35, { caption: "до" });
-  pic(s, "после_направляющая.png", M + 2.2, y + 0.35, 2.05, h - 0.35, { caption: "после: полка под шток" });
-  const x2 = M + 4.55;
-  txt(s, "Ползун", { x: x2, y, w: 4, h: 0.3, fontSize: 14, bold: true, color: C.text2 });
-  pic(s, "до_ползун.png", x2, y + 0.35, 1.35, h - 0.35, { caption: "до" });
-  pic(s, "после_ползун.png", x2 + 1.5, y + 0.35, 1.35, h - 0.35, { caption: "после: верх" });
-  pic(s, "после_головка.png", x2 + 3.0, y + 0.35, 1.75, h - 0.35, { caption: "головка (клей)" });
-  const x3 = x2 + 5.0;
-  txt(s, "Узел в сборке", { x: x3, y, w: 3, h: 0.3, fontSize: 14, bold: true, color: C.text2 });
-  pic(s, "сборка_узел.png", x3, y + 0.35, W - M - x3, h - 0.35, { caption: "шток в полке, головка снизу" });
-  s.addText([
-    { text: "3D-печать FDM: все детали, резьба М10 × 1,5 и ключ S5 — печатные.", options: { bullet: true, breakLine: true } },
-    { text: "Отверстия под оси Ø10 → Ø10,6: кулиса треснула при посадке без зазора.", options: { bullet: true, breakLine: true } },
-    { text: "Направляющая-«стул»: полка с отверстием Ø8,6 ведёт шток; ползун из двух частей, головка клеится после установки.", options: { bullet: true } },
-  ].map(r => ({ text: nb(r.text), options: r.options })), { x: M, y: 5.15, w: W - 2 * M, h: 1.0, fontSize: 14, color: TEXT,
-    valign: "top", margin: 0, paraSpaceAfter: 3, isTextBox: true, objectName: "заметки" });
-  result(s, "сборка проверена в КОМПАС-3D: пересечений на всём ходе нет, порядок сборки выполним");
-  s.addNotes("Прототип печатали на 3D-принтере. После первой сборки доработали детали: увеличили отверстия под оси, " +
-    "направляющую сделали в виде «стула» с полкой под шток, ползун разрезали — головку приклеивают снизу.");
+  const s = content("Прототипирование: детали до и после МКЭ");
+  const names = [["кулиса", "Кулиса", "облегчена: 577,6 → 447,7 г"], ["ползун", "Ползун", "скругления, головка-колокол"],
+                 ["камень", "Камень", "замкнутая обойма"], ["направляющая", "Направляющая", "планка 12 мм, скругления"]];
+  const cw = (W - 2 * M - 3 * 0.25) / 4;
+  txt(s, "До МКЭ", { x: M, y: 1.15, w: 3, h: 0.3, fontSize: 14, bold: true, color: C.text2 });
+  txt(s, "После МКЭ", { x: M, y: 3.55, w: 3, h: 0.3, fontSize: 14, bold: true, color: C.text2 });
+  names.forEach(([k, title, what], i) => {
+    const x = M + i * (cw + 0.25);
+    pic(s, `фэм_до_${k}.png`, x, 1.5, cw, 2.0, { caption: title });
+    pic(s, `фэм_после_${k}.png`, x, 3.9, cw, 2.2, { caption: `${title}: ${what}` });
+  });
+  result(s, "детали доработаны по МКЭ, напечатаны (FDM) и собраны");
+  s.addNotes("Слева направо — кулиса, ползун, камень и направляющая до и после доработки по расчёту МКЭ. Кулису облегчили, " +
+    "у ползуна сделали скругления и головку-колокол, камень стал замкнутой обоймой, у направляющей усилена планка. " +
+    "Доработанные детали напечатаны на 3D-принтере и собраны.");
 }
 
 // ------------------------------------------------------------------ 12. Выводы
@@ -336,7 +344,7 @@ const TBL = { fontSize: 13, color: TEXT, border: { type: "solid", pt: 0.75, colo
     "По прочности приняты кулиса 8 × 18 (Ст3сп), шток Ø8, ось и палец Ø10",
     "3D-модели доработаны по МКЭ, прототип напечатан и собран",
   ];
-  s.addText(items.map((t, i) => ({ text: nb(t), options: { bullet: true, breakLine: i < items.length - 1 } })),
+  s.addText(items.flatMap((t, i) => { const r = rich(t); r[0].options.bullet = true; if (i < items.length - 1) r[r.length - 1].options.breakLine = true; return r; }),
     { x: M, y: 1.35, w: 7.4, h: 5.0, fontSize: 17, color: TEXT, margin: 0, valign: "top", paraSpaceAfter: 12,
       isTextBox: true, objectName: "итоги" });
   pic(s, "схема_результат.png", 8.4, 1.25, W - M - 8.4, 5.75, { caption: "Схема с размерами по результатам расчёта" });
