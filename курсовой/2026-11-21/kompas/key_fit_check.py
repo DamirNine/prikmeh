@@ -10,7 +10,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 from kompas_build import A7, C, FILES, PARTS_DIR, SCR_HEX_S, SCR_HEX_T, app, qi
 
 KEY = os.path.join(PARTS_DIR, "Ключ шестигранный S5 (печать).m3d")
-S_KEY, L_LONG = 4.6, 75.0
+S_KEY, L_LONG = 4.85, 75.0                 # 21.11: ключ S4,85 (было 4,6 — проворачивался)
 doc = qi(app.Documents.Add(C.ksDocumentAssembly, False), A7.IKompasDocument3D)
 top = doc.TopPart
 scr = top.Parts.AddFromFile(os.path.join(PARTS_DIR, FILES["screw"]), True, False)

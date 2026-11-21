@@ -132,7 +132,7 @@ const STEPS = [
   { t: "Ползун сверху", d: "Опустите ползун (брусок со штоком) сверху между планками направляющей: шток проходит в отверстие полки, брусок встаёт перед камнем, его отверстие — напротив отверстия камня.", dur: 3.6, hl: ["polzun"], tag: "Ползун" },
   { t: "Палец через ползун", d: "Вставьте палец гладким концом спереди через отверстие бруска ползуна в камень — до упора, резьба остаётся снаружи. В камне палец сидит туго, ползун на нём поворачивается свободно.", dur: 3.2, hl: ["pin"], tag: "Палец" },
   { t: "Шайба и гайка", d: "Наденьте шайбу на резьбовой конец пальца и навинтите гайку М10 до упора — дальше её не пустит конец резьбы. Шайба остаётся с зазором 0,5 мм, ползун свободно поворачивается на пальце.", dur: 3.6, hl: ["washer", "nut"], tag: "Шайба и гайка" },
-  { t: "Головка на клей", d: "Нанесите клей в гнездо головки и наденьте её снизу на хвостовик штока до упора, конусом вниз. Клеится последней: головка шире отверстия полки, после неё ползун из направляющей не вынуть.", dur: 3.4, hl: ["head"], tag: "Головка" },
+  { t: "Головка на клей", d: "Капните клей (эпоксидный или суперклей) в гнездо головки и сразу наденьте её снизу на хвостовик штока до упора, конусом вниз; держите ровно, пока клей не схватится. Клеится последней: головка шире отверстия полки, после неё ползун из направляющей не вынуть.", dur: 5.6, hl: ["head"], tag: "Головка" },
   { t: "Проверка хода", d: "Поднимите рукоять до верхнего упора и плавно опустите до нижнего: ползун идёт строго вертикально — брусок между планками, шток в полке; ход колокола — 16 мм.", dur: 4.6, hl: ["kulisa"], tag: "" },
   { t: "Кожух", d: "Поставьте рукоять посередине хода и надвиньте кожух спереди до листа стойки: паз — на рукоять, паз в дне — на шток. Крючки боковых язычков наезжают скосом на зацепы стойки, язычки отгибаются наружу и в конце защёлкиваются (нажим около 10 Н). Снять: отжать оба язычка и потянуть кожух вперёд.", dur: 3.2, hl: ["cover"], tag: "Кожух" }];
 const N = STEPS.length;
@@ -148,6 +148,7 @@ function baseState(n) {                                    // состояние
     guide: { o: +(n >= 4), dz: 0 }, screw: { o: +(n >= 5), dz: 0, spin: 0 }, key: { o: 0 },
     polzun: { o: +(n >= 6), dz: 0, dy: 0 }, pin: { o: +(n >= 7), dz: 0 },
     washer: { o: +(n >= 8), dz: 0 }, nut: { o: +(n >= 8), dz: 0, spin: 0 }, head: { o: +(n >= 9), dy: 0 },
+    glue: { o: 0, k: 1, drop: 0, pud: 0 },                // тюбик клея: видимость, вынос (1 — далеко), капля 0…1, клей на торце
     cover: { o: +(n >= 11), dz: 0 } };
 }
 const MOVE = [
@@ -164,7 +165,10 @@ const MOVE = [
   (S, t) => { S.pin.o = seg(t, 0, .2); S.pin.dz = 60 * (1 - ease(seg(t, .12, 1))); },          // спереди через ползун в камень
   (S, t) => { S.washer.o = seg(t, 0, .18); S.washer.dz = 60 * (1 - ease(seg(t, .05, .5)));
               S.nut.o = seg(t, .38, .55); const k = ease(seg(t, .42, 1)); S.nut.dz = 60 * (1 - k); S.nut.spin = 5 * Math.PI * (1 - k); },
-  (S, t) => { S.head.o = seg(t, 0, .2); S.head.dy = -70 * (1 - ease(seg(t, .08, 1))); },        // головка снизу на хвостовик
+  (S, t) => { S.head.o = seg(t, 0, .1); S.head.dy = -70 * (1 - ease(seg(t, .62, 1)));          // клей в гнездо, затем головку — на хвостовик
+              S.glue.o = Math.min(seg(t, .08, .16), 1 - seg(t, .52, .6));
+              S.glue.k = 1 - ease(seg(t, .08, .28)) + ease(seg(t, .48, .6));
+              S.glue.drop = seg(t, .3, .46); S.glue.pud = seg(t, .42, .47) * (1 - seg(t, .94, 1)); },
   (S, t) => { S.phi = t < .28 ? lerp(PH0, PH_N, ease(t / .28)) : t < .75 ? lerp(PH_N, PH_K, ease((t - .28) / .47)) : lerp(PH_K, PH0, ease((t - .75) / .25)); },
   (S, t) => { S.cover.o = seg(t, 0, .22); S.cover.dz = 120 * (1 - ease(seg(t, .1, 1))); }];
 const WCYC = [1.1, 1.6, .45, 1.2, 1.1, .35];               // бутылка въезжает, рукоять вниз, пауза, вверх, бутылка уезжает, пауза
@@ -269,6 +273,19 @@ function setCap(f) {                                        // юбка проб
     .map(q => new THREE.Vector2(q[0], q[1])), 42);
 }
 setCap(0);
+// клей: тюбик (корпус, колпачок, носик), капля и клей на торце головки — только на шаге «Головка на клей»
+const HEAD_TOP = -82.5;                                     // верхний торец головки в координатах ползуна
+const glueMat = new THREE.MeshStandardMaterial({ color: 0x9fdcff, emissive: 0x2a6f99, emissiveIntensity: .35, roughness: .15, metalness: 0, transparent: true, opacity: .95 });
+const tube = new THREE.Group(); scene.add(tube);
+const tubeMats = [new THREE.MeshStandardMaterial({ color: 0xeef1f5, roughness: .45, transparent: true }),
+                  new THREE.MeshStandardMaterial({ color: 0x2f6fb3, roughness: .4, transparent: true })];
+{ const body = new THREE.Mesh(new THREE.CylinderGeometry(6.5, 6.5, 34, 28), tubeMats[0]); body.position.y = 12 + 17;
+  const capm = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 8, 28), tubeMats[1]); capm.position.y = 12 + 34 + 4;
+  const noz = new THREE.Mesh(new THREE.ConeGeometry(6.5, 12, 28), tubeMats[0]); noz.rotation.x = Math.PI; noz.position.y = 6;
+  tube.add(body, capm, noz); }
+tube.rotation.z = -.5;                                      // корпус уходит вправо-вверх, носик — к гнезду
+const drop = new THREE.Mesh(new THREE.SphereGeometry(2.6, 18, 12), glueMat); scene.add(drop);
+const puddle = new THREE.Mesh(new THREE.CylinderGeometry(5.6, 5.6, 1.0, 28), glueMat); scene.add(puddle);
 // стол под основанием: мягкое светлое пятно
 const cv = document.createElement("canvas"); cv.width = cv.height = 256;
 const cx = cv.getContext("2d"), gr = cx.createRadialGradient(128, 128, 10, 128, 128, 128);
@@ -301,6 +318,12 @@ function pose(S) {
   P.key.grp.quaternion.setFromAxisAngle(AXZ, S.screw.spin).multiply(KEY_Q);
   P.polzun.grp.position.set(E, y + S.polzun.dy, S.polzun.dz);
   P.head.grp.position.set(E, y + S.polzun.dy + S.head.dy, S.polzun.dz);       // головка — в системе координат ползуна
+  const hy = y + S.polzun.dy + S.head.dy + HEAD_TOP, G = S.glue;              // торец головки с гнездом
+  tube.visible = G.o > .004; tubeMats.forEach(m => { m.opacity = G.o; m.depthWrite = G.o > .5; });
+  tube.position.set(E + 70 * G.k, hy + 2 + 45 * G.k, S.polzun.dz + 30 * G.k);
+  drop.visible = G.drop > 0 && G.drop < 1;
+  drop.position.set(E, hy + 2 - 3.5 * G.drop, S.polzun.dz); drop.scale.setScalar(.4 + .6 * Math.min(1, G.drop * 3));
+  puddle.visible = G.pud > .01; puddle.scale.set(G.pud, 1, G.pud); puddle.position.set(E, hy + .45, S.polzun.dz);
   P.washer.grp.position.set(E, y, Z_WASHER + S.washer.dz); P.washer.grp.rotation.z = ph;
   P.nut.grp.position.set(E, y, Z_NUT + S.nut.dz); P.nut.grp.rotation.z = ph + S.nut.spin;
   P.cover.grp.position.set(0, 0, Z_ST + S.cover.dz);
@@ -343,7 +366,7 @@ const VIEW_ALL = { c: [150, 15, 0], d: 1560 }, VIEW_WORK = { c: [95, -105, 0], d
 const VIEW_CLOSE = { c: [E, 0, 6], d: 300 };                 // крупный план механизма (кнопка «Крупно»)
 const VIEWS = [{ c: [14, -135, 0], d: 1180 }, { c: [335 * c0, 335 * s0, DZ], d: 960 },
   { c: [150, 110, DZ / 2], d: 880 }, { c: [E, -30, 50], d: 620 }, { c: [SCR_X, SCR_Y, 10], d: 200, dir: [.15, .28, .95] }, { c: [E, 0, 40], d: 640 },
-  { c: [E, yD(PH0), 36], d: 260 }, { c: [E, yD(PH0), 36], d: 250 }, { c: [E, -80, 30], d: 420 }, VIEW_ALL,
+  { c: [E, yD(PH0), 36], d: 260 }, { c: [E, yD(PH0), 36], d: 250 }, { c: [E, -115, 30], d: 360 }, VIEW_ALL,
   VIEW_ALL];                                                  // кожух — общим видом, без приближения
 let camTween = null;
 const fit = d => d * Math.max(1, .82 / camera.aspect);     // на узком экране отодвигаемся
