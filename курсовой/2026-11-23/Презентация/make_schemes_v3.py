@@ -55,13 +55,13 @@ def scheme(values, name):
         ax.plot([p0[0], p1[0]], [p0[1], p1[1]], color=K_, lw=lw, ls=ls, zorder=z, solid_capstyle=cap)
 
     def ground(p0, p1, side, n=5, h=0.28):
-        """неподвижное звено (как на образце): линия p0–p1 и штрихи под 45° на сторону side"""
+        """неподвижное звено: линия p0–p1 и штрихи на сторону side; все штрихи на схеме параллельны — наклон «/»
+        (Корнеев 23.11: «стойка смотрит в одну сторону», без «ёлочки»)"""
         p0, p1 = np.array(p0, float), np.array(p1, float)
         line(p0, p1, lw=1.6, z=6)
-        t = (p1 - p0) / np.linalg.norm(p1 - p0)
-        s = np.array(side, float) / np.linalg.norm(side)
-        d = h * (s - t) / np.sqrt(2) * np.sqrt(2)
-        for k in np.linspace(0.12, 1, n):
+        d = h * np.array([1.0, 1.0]) * (1 if np.dot(side, [1, 1]) > 0 else -1)
+        L = np.linalg.norm(p1 - p0); dt = np.dot(d, (p1 - p0) / L) / L       # штрих не выходит за концы линии
+        for k in np.linspace(max(0, -dt), min(1, 1 - dt), n):
             a = p0 + k * (p1 - p0)
             line(a, a + d, lw=1.1, z=6)
 
@@ -133,7 +133,7 @@ def scheme(values, name):
     # номера звеньев на полках
     shelf(0.99 * Kp, 0.99 * Kp + np.array([0.5, -0.45]), "1")
     shelf(D - 0.3 * u(PH) + 0.4 * nrm(PH), (1.2, 3.1), "2", right=False)
-    shelf((E_S, -2.25), (1.45, -1.75), "3", right=False)
+    shelf((E_S, -2.4), (1.45, -2.1), "3", right=False)
     # точка K, силы, угол φ
     ax.text(Kp[0] - 0.3, Kp[1] + 0.02, "K", fontsize=19, ha="right", va="bottom", weight="bold")
     arrow(Kp + np.array([0, 1.45]), Kp + np.array([0, 0.04]), lw=2.0)
