@@ -136,8 +136,8 @@ def formulas():
         ("Изгиб со сжатием (нормальные напряжения):", r"$\sigma = \dfrac{|N|}{A} + \dfrac{|M_D|}{W} \leq [\sigma] = \dfrac{\sigma_{\mathrm{т}}}{n}$"),
         ("Срез на участке O–D (Журавский):", r"$\tau_{\max} = \dfrac{1{,}5\,|Q|}{b\,h} \leq [\tau]$"),
     ], width=5.2)
+    # Корнеев 24.11 02:17: изгиб со сжатием кулисы — на слайде 9 (критерии под эпюрами), здесь не повторяем
     formula_block("ф_проверки.png", [
-        ("Изгиб со сжатием — кулиса, сечение D:", r"$\sigma = \dfrac{|N|}{A} + \dfrac{|M|}{W} \leq [\sigma] = \dfrac{\sigma_{\mathrm{т}}}{n},\quad n = 2{,}5$"),
         ("Устойчивость — шток (μ = 2, l = 60 мм):", r"$\lambda = \dfrac{\mu\,l}{i},\ \ i = \dfrac{d}{4};\qquad \lambda < 100:\ \ \sigma_{\mathrm{кр}} = a - b\,\lambda$"),
         (None, r"$\lambda \geq 100:\ \ F_{\mathrm{кр}} = \dfrac{\pi^2 E\,I_{\min}}{(\mu\,l)^2};\qquad n_{\mathrm{у}} = \dfrac{F_{\mathrm{кр}}}{F_{\mathrm{ук}}} \geq 3$"),
         ("Срез — ось O, палец D (одна плоскость):", r"$\tau_{\mathrm{ср}} = \dfrac{4\,R}{\pi\,d^2} \leq [\tau_{\mathrm{ср}}]$"),
