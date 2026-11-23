@@ -1,0 +1,179 @@
+# -*- coding: utf-8 -*-
+"""Кинематическая схема v2 (Корнеев, 23.11 22:41): «преподаватель сказал просто повернуть данный рисунок на 90° и
+расставить обозначения» — образец fig/образец_схемы_22-41.jpg (кулиса 1 — камень 2 — звено 3) повёрнут на 90° против
+часовой: кулиса из O вверх-вправо, звено 3 вертикально. Оси xOy — как раньше (O в начале, x вправо, y вверх).
+Вторую стойку справа не рисуем (Корнеев убрал её намеренно).
+Кинематические пары как на образце: O(1-0) вращательная, C(1-2) поступательная, D(2-3) вращательная.
+  fig/схема_постановка.png — без чисел; fig/схема_результат.png — с размерами и крайними положениями.
+    python make_schemes_v2.py"""
+import json, os
+from math import radians, tan, cos, sin
+import numpy as np, matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle, Circle, Arc
+from matplotlib.transforms import Affine2D
+from PIL import Image, ImageChops
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+FIG = os.path.join(HERE, "fig")
+KURS = os.path.join(HERE, "..", "..")
+RJ = json.load(open(os.path.join(KURS, "2026-11-04", "calc_v21.json"), encoding="utf-8"))
+SIZES = json.load(open(os.path.join(FIG, "sizes.json"), encoding="utf-8"))
+TNR = "Times New Roman"
+plt.rcParams.update({"font.family": TNR, "mathtext.fontset": "custom", "mathtext.rm": TNR,
+                     "mathtext.it": TNR + ":italic", "mathtext.bf": TNR + ":bold", "font.size": 16})
+K_ = "black"
+LW, THIN = 2.0, 0.9
+PHANTOM = (0, (10, 2.5, 1.5, 2.5, 1.5, 2.5))
+PH_N, PH_K, PH = RJ["phi_n"], RJ["phi_k"], 46.0
+E_S, L_S = 2.4, 7.6                 # без масштаба: e увеличено относительно L
+RJ_ = 0.17                          # радиус кружка шарнира
+STONE = (1.25, 0.8)                 # камень: длина вдоль кулисы × ширина
+
+
+def trim_save(fig, name, pad=16):
+    path = os.path.join(FIG, name)
+    fig.savefig(path, facecolor="white", dpi=240, bbox_inches="tight", pad_inches=0.06)
+    plt.close(fig)
+    im = Image.open(path).convert("RGB")
+    bb = ImageChops.difference(im, Image.new("RGB", im.size, (255, 255, 255))).point(lambda v: 255 if v > 12 else 0).getbbox()
+    im = im.crop((max(bb[0] - pad, 0), max(bb[1] - pad, 0), min(bb[2] + pad, im.width), min(bb[3] + pad, im.height)))
+    im.save(path)
+    SIZES[name] = im.size
+    print(f"  {name}: {im.size}")
+
+
+def scheme(values, name):
+    fig, ax = plt.subplots(figsize=(8.4, 8.6))
+    ax.set_aspect("equal"); ax.axis("off")
+    u = lambda ph: np.array([cos(radians(ph)), sin(radians(ph))])
+    nrm = lambda ph: np.array([-sin(radians(ph)), cos(radians(ph))])
+    yD = lambda ph: E_S * tan(radians(ph))
+
+    def line(p0, p1, lw=LW, ls="-", z=5, cap="butt"):
+        ax.plot([p0[0], p1[0]], [p0[1], p1[1]], color=K_, lw=lw, ls=ls, zorder=z, solid_capstyle=cap)
+
+    def ground(p0, p1, side, n=5, h=0.28):
+        """неподвижное звено (как на образце): линия p0–p1 и штрихи под 45° на сторону side"""
+        p0, p1 = np.array(p0, float), np.array(p1, float)
+        line(p0, p1, lw=1.6, z=6)
+        t = (p1 - p0) / np.linalg.norm(p1 - p0)
+        s = np.array(side, float) / np.linalg.norm(side)
+        d = h * (s - t) / np.sqrt(2) * np.sqrt(2)
+        for k in np.linspace(0.12, 1, n):
+            a = p0 + k * (p1 - p0)
+            line(a, a + d, lw=1.1, z=6)
+
+    def joint(c, lw=1.6, ls="-", z=9, r=RJ_):
+        ax.add_patch(Circle(c, r, fc="white", ec=K_, lw=lw, ls=ls, zorder=z))
+
+    def shelf(p, to, txt, right=True):
+        """выноска с полкой, номер звена над полкой (как на образце)"""
+        p, to = np.array(p, float), np.array(to, float)
+        end = to + np.array([0.75 if right else -0.75, 0])
+        line(p, to, lw=0.9, z=3); line(to, end, lw=0.9, z=3)
+        ax.text((to[0] + end[0]) / 2, to[1] + 0.08, txt, fontsize=18, ha="center", va="bottom")
+
+    def pair(p, letter, sup, sub, ha="left"):
+        ax.text(*p, rf"$\mathbf{{{letter}}}^{{\mathbf{{{sup}}}}}_{{\mathbf{{{sub}}}}}$", fontsize=21, ha=ha, va="center")
+
+    def arrow(p0, p1, lw=1.8, ms=16):
+        ax.annotate("", xy=p1, xytext=p0, arrowprops=dict(arrowstyle="-|>", color=K_, lw=lw, mutation_scale=ms,
+                                                          shrinkA=0, shrinkB=0), zorder=8)
+
+    def stone(ph, main):
+        """камень 2: прямоугольник вдоль кулисы; внутри шарнир D, звено 3 входит в него скобой снизу"""
+        lw, ls, z = (1.6, "-", 7) if main else (THIN, PHANTOM, 4)
+        D = np.array([E_S, yD(ph)])
+        r = Rectangle((-STONE[0] / 2, -STONE[1] / 2), *STONE, fc="white", ec=K_, lw=lw, ls=ls, zorder=z)
+        r.set_transform(Affine2D().rotate_deg(ph).translate(*D) + ax.transData); ax.add_patch(r)
+        rb = RJ_ + 0.09                                             # скоба звена 3 вокруг пальца D
+        ax.add_patch(Arc(D, 2 * rb, 2 * rb, theta1=180, theta2=360, color=K_, lw=lw, ls=ls, zorder=z + 1))
+        # от скобы вверх до края камня (на образце — до правого края, после поворота — вверх)
+        ytop = D[1] + (STONE[1] / 2) / cos(radians(ph)) - abs(rb * tan(radians(ph)))
+        for sx in (-rb, rb):
+            yt = D[1] + (STONE[1] / 2 - sx * sin(radians(ph))) / cos(radians(ph)) * 1.0
+            yt = D[1] + (STONE[1] / 2 + sx * sin(radians(ph))) / cos(radians(ph))
+            line((E_S + sx, D[1]), (E_S + sx, yt), lw=lw, ls=ls, z=z + 1)
+        joint(D, lw=lw, ls=ls, z=z + 2)
+        return D
+
+    O = np.zeros(2)
+    # оси xOy — как в презентации и РПЗ
+    arrow((-0.2, 0), (8.6, 0), lw=0.9, ms=12); ax.text(8.6, -0.28, "x", fontsize=19, ha="center", va="top", style="italic")
+    arrow((0, -0.2), (0, 8.4), lw=0.9, ms=12); ax.text(-0.22, 8.35, "y", fontsize=19, ha="right", va="center", style="italic")
+    # стойка 0 у шарнира O: на образце — сверху, после поворота — слева
+    a0 = np.array([-0.75, 0])
+    line(O, a0 + [0, 0.32], lw=1.6); line(O, a0 - [0, 0.32], lw=1.6)
+    ground(a0 + [0, 0.7], a0 - [0, 0.7], (-1, 0), n=6)
+    ax.text(-1.45, -0.95, "0", fontsize=18, ha="center", va="center", weight="bold")
+
+    if values:                                   # крайние положения кулисы и камня
+        for ph, ln in ((PH_N, 1.0), (PH_K, 0.8)):
+            line(O, ln * L_S * u(ph), lw=THIN, ls=PHANTOM, z=2)
+            stone(ph, False)
+    Kp = L_S * u(PH)
+    line(O + RJ_ * u(PH), Kp, cap="round")                     # кулиса 1
+    joint(O)
+    D = stone(PH, True)
+    # звено 3: вертикальная прямая через D — вниз через направляющую, вверх выходит из камня
+    top = D[1] + STONE[1] / 2 / cos(radians(PH)) + 0.6 + 0.35
+    ytop_st = D[1] + (STONE[1] / 2 + 0 * sin(radians(PH))) / cos(radians(PH))
+    line((E_S, ytop_st), (E_S, D[1] + 1.0))
+    yb = -2.6
+    y_st_bot = D[1] - (STONE[1] / 2) / cos(radians(PH))
+    line((E_S, y_st_bot), (E_S, yb))
+    # направляющая 3–0 (на образце — «+» над штриховкой слева, после поворота — снизу)
+    g0, g1 = -1.9, -0.75
+    ground((E_S + 0.12, g1), (E_S + 0.12, g0), (1, 0), n=5)
+    ax.plot([E_S - 0.42, E_S - 0.12], [(g0 + g1) / 2] * 2, color=K_, lw=1.6)
+    ax.plot([E_S - 0.27] * 2, [(g0 + g1) / 2 - 0.15, (g0 + g1) / 2 + 0.15], color=K_, lw=1.6)
+    ax.text(E_S + 0.75, (g0 + g1) / 2, "0", fontsize=18, ha="left", va="center", weight="bold")
+
+    # обозначения кинематических пар (как на образце)
+    pair((0.32, -0.42), "O", "10", "1В")
+    C = 0.75 * D
+    pair(C + 0.45 * nrm(PH), "C", "12", "1П", ha="right")
+    pair(D + np.array([0.78, -0.22]), "D", "23", "1В")
+    # номера звеньев на полках
+    shelf(0.99 * Kp, 0.99 * Kp + np.array([0.5, -0.45]), "1")
+    shelf(D - 0.3 * u(PH) + 0.4 * nrm(PH), (1.2, 3.1), "2", right=False)
+    shelf((E_S, -2.2), (1.6, -1.6), "3", right=False)
+    # точка K, силы, угол φ
+    ax.text(Kp[0] - 0.3, Kp[1] + 0.02, "K", fontsize=19, ha="right", va="bottom", weight="bold")
+    arrow(Kp + np.array([0, 1.45]), Kp + np.array([0, 0.04]), lw=2.0)
+    ax.text(Kp[0] + 0.18, Kp[1] + 1.05, "P", fontsize=21, ha="left", va="center", style="italic")
+    arrow((E_S, yb - 1.0), (E_S, yb - 0.04), lw=2.0)
+    ax.text(E_S + 0.2, yb - 0.55, r"$F_{\mathrm{ук}}$", fontsize=21, ha="left", va="center")
+    ax.add_patch(Arc(O, 2.6, 2.6, theta1=0, theta2=PH, color=K_, lw=0.9, zorder=4))
+    ax.text(1.6 * cos(radians(PH / 2)), 1.6 * sin(radians(PH / 2)), r"$\varphi$", fontsize=21, ha="center", va="center")
+    if values:
+        for ph, ln, lab, val in ((PH_N, 1.0, r"\varphi_{\mathrm{н}}", PH_N), (PH_K, 0.8, r"\varphi_{\mathrm{к}}", PH_K)):
+            side = 1 if ph > 45 else -1
+            t = rf"${lab}$ = {val:.1f}°".replace(".", ",")
+            ax.text(*((ln - 0.1) * L_S * u(ph) + 0.36 * side * nrm(ph)), t, fontsize=17, ha="center", va="center",
+                    rotation=ph, rotation_mode="anchor")
+        ax.text(*(0.79 * Kp - 0.34 * nrm(PH)), "L = OK = 500 мм", fontsize=13, rotation=PH, ha="center", va="center",
+                rotation_mode="anchor")
+        Bn, Bk = np.array([E_S, yD(PH_N)]), np.array([E_S, yD(PH_K)])
+        xs = -1.6
+        for p in (Bn, Bk):
+            line((p[0] - 0.75, p[1]), (xs - 0.15, p[1]), lw=0.6, z=2)
+        ax.annotate("", xy=(xs, Bk[1]), xytext=(xs, Bn[1]), arrowprops=dict(arrowstyle="<|-|>", color=K_, lw=0.8,
+                                                                           mutation_scale=11, shrinkA=0, shrinkB=0))
+        ax.text(xs - 0.15, (Bn[1] + Bk[1]) / 2, "S = 16 мм", fontsize=17, ha="right", va="center", rotation=90)
+        ybot = yb - 1.5
+        line((0, -0.25), (0, ybot - 0.15), lw=0.6, z=2)
+        line((E_S, yb - 1.05), (E_S, ybot - 0.15), lw=0.6, z=2)
+        ax.annotate("", xy=(E_S, ybot), xytext=(0, ybot), arrowprops=dict(arrowstyle="<|-|>", color=K_, lw=0.8,
+                                                                         mutation_scale=11, shrinkA=0, shrinkB=0))
+        ax.text(E_S / 2, ybot + 0.1, "e = 12,5 мм", fontsize=17, ha="center", va="bottom")
+    ax.set_xlim(-2.6 if values else -2.0, 9.0); ax.set_ylim(yb - (2.0 if values else 1.2), 8.7)
+    trim_save(fig, name)
+
+
+if __name__ == "__main__":
+    scheme(False, "схема_постановка.png")
+    scheme(True, "схема_результат.png")
+    json.dump(SIZES, open(os.path.join(FIG, "sizes.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
