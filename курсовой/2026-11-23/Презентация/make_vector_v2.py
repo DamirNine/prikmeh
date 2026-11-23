@@ -192,7 +192,7 @@ def vector_contour():
     ax.text(e / 2, -0.3, r"$\vec{e}$", fontsize=20, ha="center", va="top")
     ax.text(B[0] + 0.2, D[1] / 2, r"$\vec{y}_D$", fontsize=20, ha="left", va="center")
     m = D / 2 + 0.38 * np.array([-sin(radians(ph)), cos(radians(ph))])
-    ax.text(*m, r"$\vec{l}$", fontsize=20, ha="center", va="center")
+    ax.text(*m, r"$\vec{l}_{OD}$", fontsize=20, ha="center", va="center")   # как в РПЗ (Корнеев 00:14)
     for p, t, off in ((O, "O", (-0.32, 0.22)), (B, "B", (0.25, -0.3)), (D, "D", (0.28, 0.1))):
         ax.add_patch(Circle(p, 0.075, fc=K_, ec=K_, lw=1.0, zorder=9))   # обычные маленькие чёрные точки (Корнеев 23:24)
         ax.text(p[0] + off[0], p[1] + off[1], t, fontsize=16, ha="center", va="center", weight="bold")
@@ -202,8 +202,8 @@ def vector_contour():
 
 def contour_formulas():
     plt.rcParams.update({"mathtext.fontset": "stix", "font.family": "STIXGeneral"})
-    lines = [r"$\vec{l} = \vec{e} + \vec{y}_D$",
-             r"$x:\ \ l\,\cos\varphi = e, \qquad y:\ \ l\,\sin\varphi = y_D$",
+    lines = [r"$\vec{l}_{OD} = \vec{e} + \vec{y}_D$",
+             r"$x:\ \ l_{OD}\,\cos\varphi = e, \qquad y:\ \ l_{OD}\,\sin\varphi = y_D$",
              r"$y_D = e\,\mathrm{tg}\,\varphi$",
              r"$v_D = \dfrac{d y_D}{d t} = \dfrac{e\,\omega}{\cos^2\varphi}$",
              r"$a_D = \dfrac{d v_D}{d t} = \dfrac{e\,(\varepsilon + 2\,\omega^2\,\mathrm{tg}\,\varphi)}{\cos^2\varphi}$"]
@@ -218,6 +218,7 @@ def contour_formulas():
     plt.rcParams.update({"mathtext.fontset": "custom", "font.family": "Arial"})
 
 
-if __name__ == "__main__":                    # только векторный контур (схемы — make_schemes_v3.py)
+if __name__ == "__main__":                    # векторный контур и его формулы (схемы — make_schemes_v3.py)
     vector_contour()
+    contour_formulas()
     json.dump(SIZES, open(os.path.join(FIG, "sizes.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)

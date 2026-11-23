@@ -76,6 +76,11 @@ for t in row._tr.iter(f"{{{NS['m']}}}t"):
     if t.text == "597,2": t.text = "389,9"
 print("  направляющая: вариант Б —", cap.text, "|", [c.text for c in row.cells])
 
+# ---- п. 3.2: формулы контура в векторном виде, y_D (Корнеев 00:14)
+import sys; sys.path.insert(0, HERE)
+from omml_patch import fix_contour
+fix_contour(d)
+
 # ---- п. 3.2: векторный контур O → B → D + новый рисунок 3 (Корнеев 23.11 23:36); дальнейшие рисунки +1
 import re, copy
 from docx.text.paragraph import Paragraph

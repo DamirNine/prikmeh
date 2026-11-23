@@ -165,24 +165,27 @@ def scheme(values, name, synth=False):
     if values:
         for ph, ln, lab, val in ((PH_N, 1.0, r"\varphi_{\mathrm{н}}", PH_N), (PH_K, 0.8, r"\varphi_{\mathrm{к}}", PH_K)):
             side = 1 if ph > 45 else -1
-            t = rf"${lab}$ = {val:.1f}°".replace(".", ",")
-            ax.text(*((ln - 0.1) * L_S * u(ph) + 0.36 * side * nrm(ph)), t, fontsize=17, ha="center", va="center",
-                    rotation=ph, rotation_mode="anchor")
-        ax.text(*(0.79 * Kp - 0.34 * nrm(PH)), "L = OK = 500 мм", fontsize=13, rotation=PH, ha="center", va="center",
-                rotation_mode="anchor")
+            # синтез: значения ещё не найдены — только обозначения (Корнеев 24.11 00:14)
+            t = rf"${lab}$" if synth else rf"${lab}$ = {val:.1f}°".replace(".", ",")
+            ax.text(*((ln - (0.05 if synth else 0.1)) * L_S * u(ph) + 0.36 * side * nrm(ph)), t,
+                    fontsize=21 if synth else 17, ha="center", va="center", rotation=ph, rotation_mode="anchor")
+        ax.text(*(0.79 * Kp - 0.34 * nrm(PH)), "L = OK" if synth else "L = OK = 500 мм", fontsize=15 if synth else 13,
+                rotation=PH, ha="center", va="center", rotation_mode="anchor")
         Bn, Bk = np.array([E_S, yD(PH_N)]), np.array([E_S, yD(PH_K)])
         xs = -1.6
         for p in (Bn, Bk):
             line((p[0] - 0.75, p[1]), (xs - 0.15, p[1]), lw=0.6, z=2)
         ax.annotate("", xy=(xs, Bk[1]), xytext=(xs, Bn[1]), arrowprops=dict(arrowstyle="<|-|>", color=K_, lw=0.8,
                                                                            mutation_scale=11, shrinkA=0, shrinkB=0))
-        ax.text(xs - 0.15, (Bn[1] + Bk[1]) / 2, "S = 16 мм", fontsize=17, ha="right", va="center", rotation=90)
+        ax.text(xs - 0.15, (Bn[1] + Bk[1]) / 2, "S" if synth else "S = 16 мм", fontsize=21 if synth else 17,
+                ha="right", va="center", rotation=0 if synth else 90, style="italic" if synth else "normal")
         ybot = yb - 1.5
         line((0, -0.25), (0, ybot - 0.15), lw=0.6, z=2)
         line((E_S, yb - 1.05), (E_S, ybot - 0.15), lw=0.6, z=2)
         ax.annotate("", xy=(E_S, ybot), xytext=(0, ybot), arrowprops=dict(arrowstyle="<|-|>", color=K_, lw=0.8,
                                                                          mutation_scale=11, shrinkA=0, shrinkB=0))
-        ax.text(E_S / 2, ybot + 0.1, "e = 12,5 мм", fontsize=17, ha="center", va="bottom")
+        ax.text(E_S / 2, ybot + 0.1, "e" if synth else "e = 12,5 мм", fontsize=21 if synth else 17, ha="center",
+                va="bottom", style="italic" if synth else "normal")
     ax.set_xlim(-2.6 if values else -2.0, 9.0); ax.set_ylim(yb - (2.0 if values else 1.2), 8.7)
     trim_save(fig, name)
 
