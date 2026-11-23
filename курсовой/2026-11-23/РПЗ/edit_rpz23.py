@@ -3,7 +3,8 @@
   рис. 2, 16 — новые кинематические схемы (образец, повёрнутый на 90°; пары O¹⁰₁В, C¹²₁П, D²³₁В) — Презентация/make_schemes_v2.py;
   рис. 8, 14 — схемы звеньев с белыми кружками вместо чёрных точек (fbd/fig7, fig13_fbd_v24.png);
   рис. 11, 12 — эпюры: точки O, D, K белыми кружками (dots_to_rings.py);
-  табл. 19 — σэкв вместо σvM,max; рис. 19–22 — скрины МКЭ без шкалы SVM, max/min под каждым.
+  табл. 19 — σэкв вместо σvM,max; рис. 19–22 — скрины МКЭ без шкалы SVM, max/min под каждым;
+  п. 3.2 — контур O → B → D и новый рис. 3 (вектор_контур.png), последующие рисунки и ссылки +1.
     python edit_rpz23.py   (вход РПЗ_укупориватель_исходный.docx → РПЗ_укупориватель.docx)"""
 import os
 from docx import Document
@@ -58,5 +59,53 @@ for t in body.iter(f"{{{NS['m']}}}t"):
             sub.remove(r)
         print("  табл. 19: σэкв")
 # п. 3.1 без изменений: подпись пары C со схемы убрана (Корнеев 23:20)
+# ---- п. 3.2: векторный контур O → B → D + новый рисунок 3 (Корнеев 23.11 23:36); дальнейшие рисунки +1
+import re, copy
+from docx.text.paragraph import Paragraph
+from docx.shared import Cm
+paras = d.paragraphs
+# 1) перенумерация: подписи «Рисунок N …» и ссылки «рисунок/рисунке/рисунках N [и M]», N ≥ 3
+cap_re = re.compile(r"^(Рисунок )(\d+)")
+ref_re = re.compile(r"(рисун\w*\s+)(\d+)((?:\s*(?:и|,)\s*)(\d+))?")
+def bump(m):
+    n = int(m.group(2)); out = m.group(1) + str(n + 1 if n >= 3 else n)
+    if m.group(3):
+        k = int(m.group(4)); out += m.group(3)[:len(m.group(3)) - len(m.group(4))] + str(k + 1 if k >= 3 else k)
+    return out
+nb = 0
+for para in paras:
+    for ri, r in enumerate(para.runs):
+        t = r.text
+        if para.text.startswith("Рисунок") and ri == 0:
+            t = cap_re.sub(lambda m: m.group(1) + str(int(m.group(2)) + 1 if int(m.group(2)) >= 3 else int(m.group(2))), t)
+        t = ref_re.sub(bump, t)
+        if t != r.text:
+            r.text = t; nb += 1
+print("  перенумерация рисунков: правок", nb)
+# 2) текст п. 3.2
+i32 = next(i for i, q in enumerate(paras) if q.text.startswith("Векторный контур O → D"))
+rr = paras[i32].runs
+assert [r.text for r in rr[:4]] == ["Векторный контур ", "O", " → ", "D"]
+rr[3].text = "B"
+new = copy.deepcopy(rr[2]._r); rr[3]._r.addnext(new)
+new2 = copy.deepcopy(rr[3]._r); new.addnext(new2)
+from docx.text.run import Run
+Run(new2, paras[i32]).text = "D (рисунок 3)"
+print("  п. 3.2:", paras[i32].text[:60])
+# 3) рисунок 3 — после формул п. 3.2, перед «3.3.»
+i33 = next(i for i, q in enumerate(paras) if q.text.startswith("3.3. Аналоги"))
+fig_src = next(q for q in paras if q.text == "" and q._p.findall(f".//{{{NS['a']}}}blip"))   # абзац рис. 1 — образец оформления
+cap_src = next(q for q in paras if q.text.startswith("Рисунок 2 —"))
+pic_el = copy.deepcopy(fig_src._p)
+for ch in list(pic_el):
+    if not ch.tag.endswith("}pPr"): pic_el.remove(ch)
+cap_el = copy.deepcopy(cap_src._p)
+paras[i33]._p.addprevious(pic_el); paras[i33]._p.addprevious(cap_el)
+pp = Paragraph(pic_el, paras[i33]._parent)
+pp.add_run().add_picture(os.path.join(P, "вектор_контур.png"), width=Cm(8.5))
+cp = Paragraph(cap_el, paras[i33]._parent)
+for r in cp.runs[1:]: r._r.getparent().remove(r._r)
+cp.runs[0].text = "Рисунок 3 — Векторный контур O → B → D (B — проекция D на ось x)"
+print("  рисунок 3 вставлен")
 d.save(os.path.join(HERE, "РПЗ_укупориватель.docx"))
 print("сохранено")
