@@ -151,5 +151,12 @@ for txt, sub in (("н", True), ("–B", False), ("к", True), (" и углово
     rn = Run(el, cp); rn.text = txt; rn.font.subscript = sub or None
 print("  рисунок 4 (синтез) вставлен")
 
+# 24.11: объём в задании — после вставки формул п. 6.3 (rpz_kin_insert.py) 50 листов; презентация — 15 слайдов
+for p in d.paragraphs:
+    for r in p.runs:
+        for a, b in (("48 листах", "50 листах"), ("49 листах", "50 листах"), ("на 13 слайдов", "на 15 слайдов")):
+            if a in r.text:
+                r.text = r.text.replace(a, b); print("  задание:", b)
+
 d.save(os.path.join(HERE, "РПЗ_укупориватель.docx"))
 print("сохранено")

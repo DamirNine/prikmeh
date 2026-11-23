@@ -202,12 +202,15 @@ def vector_contour():
 
 def contour_formulas():
     plt.rcParams.update({"mathtext.fontset": "stix", "font.family": "STIXGeneral"})
-    lines = [r"$\vec{l}_{OD} = \vec{e} + \vec{y}_D$",
+    # 24.11 Корнеев: стрелки векторов — длинные, как в РПЗ; добавлена точка K (конец рукояти, как в РПЗ п. 3.3)
+    lines = [r"$\overrightarrow{l_{OD}} = \vec{e} + \overrightarrow{y_D}$",
              r"$x:\ \ l_{OD}\,\cos\varphi = e, \qquad y:\ \ l_{OD}\,\sin\varphi = y_D$",
              r"$y_D = e\,\mathrm{tg}\,\varphi$",
              r"$v_D = \dfrac{d y_D}{d t} = \dfrac{e\,\omega}{\cos^2\varphi}$",
-             r"$a_D = \dfrac{d v_D}{d t} = \dfrac{e\,(\varepsilon + 2\,\omega^2\,\mathrm{tg}\,\varphi)}{\cos^2\varphi}$"]
-    h = [0.62, 0.62, 0.62, 0.95, 0.95]
+             r"$a_D = \dfrac{d v_D}{d t} = \dfrac{e\,(\varepsilon + 2\,\omega^2\,\mathrm{tg}\,\varphi)}{\cos^2\varphi}$",
+             r"$K:\ \ x_K = L\,\cos\varphi, \qquad y_K = L\,\sin\varphi$",
+             r"$v_K = \omega\,L, \qquad a_K^{\tau} = \varepsilon\,L, \qquad a_K^{n} = \omega^2 L$"]
+    h = [0.7, 0.62, 0.62, 0.95, 0.95, 0.62, 0.62]
     fig = plt.figure(figsize=(7.0, sum(h)))
     y = 1.0
     for s, hh in zip(lines, h):
