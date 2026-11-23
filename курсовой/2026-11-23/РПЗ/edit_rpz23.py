@@ -151,6 +151,15 @@ for txt, sub in (("н", True), ("–B", False), ("к", True), (" и углово
     rn = Run(el, cp); rn.text = txt; rn.font.subscript = sub or None
 print("  рисунок 4 (синтез) вставлен")
 
+# 24.11 (Корнеев 02:00): «nу = Fкр/Fук ≥ □□3» — пустой индекс, остаток от снятых скобок [nу] (21.11). Удаляем все
+# пустые m:sSub/m:sSup/m:sSubSup (ни основания, ни индексов) во всём документе.
+_M = "{http://schemas.openxmlformats.org/officeDocument/2006/math}"
+_empty = [el for tag in ("sSub", "sSup", "sSubSup") for el in d.element.body.iter(_M + tag)
+          if not "".join(x.text or "" for x in el.iter(_M + "t")).strip()]
+for el in _empty:
+    el.getparent().remove(el)
+print("  пустых индексов в формулах удалено:", len(_empty))
+
 # 24.11: объём в задании — после вставки формул п. 6.3 (rpz_kin_insert.py) 50 листов; презентация — 15 слайдов
 for p in d.paragraphs:
     for r in p.runs:
