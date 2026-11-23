@@ -126,10 +126,10 @@ def scheme(values, name):
     ax.text(E_S + 0.9, (g0 + g1) / 2, "0", fontsize=18, ha="left", va="center", weight="bold")
 
     # обозначения кинематических пар (как на образце)
-    pair((0.32, -0.42), "O", "10", "1В")
+    ax.text(0.3, -0.42, "O", fontsize=21, ha="left", va="center", weight="bold")   # индексы пар убраны (Корнеев 23:26)
     C = 0.75 * D
     # подпись пары C¹²₁П убрана (Корнеев 23.11 23:20: «убери эти штуки»)
-    pair(D + np.array([0.78, -0.22]), "D", "23", "1В")
+    ax.text(*(D + np.array([0.78, -0.22])), "D", fontsize=21, ha="left", va="center", weight="bold")
     # номера звеньев на полках
     shelf(0.99 * Kp, 0.99 * Kp + np.array([0.5, -0.45]), "1")
     shelf(D - 0.3 * u(PH) + 0.4 * nrm(PH), (1.2, 3.1), "2", right=False)
