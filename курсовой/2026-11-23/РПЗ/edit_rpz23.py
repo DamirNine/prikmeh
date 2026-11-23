@@ -3,7 +3,7 @@
   рис. 2, 16 — новые кинематические схемы (образец, повёрнутый на 90°; пары O¹⁰₁В, C¹²₁П, D²³₁В) — Презентация/make_schemes_v2.py;
   рис. 8, 14 — схемы звеньев с белыми кружками вместо чёрных точек (fbd/fig7, fig13_fbd_v24.png);
   рис. 11, 12 — эпюры: точки O, D, K белыми кружками (dots_to_rings.py);
-  табл. 19 — σэкв вместо σvM,max.
+  табл. 19 — σэкв вместо σvM,max; рис. 19–22 — скрины МКЭ без шкалы SVM, max/min под каждым.
     python edit_rpz23.py   (вход РПЗ_укупориватель_исходный.docx → РПЗ_укупориватель.docx)"""
 import os
 from docx import Document
@@ -15,7 +15,9 @@ FBD = os.path.join(HERE, "..", "fbd")
 M = os.path.join(HERE, "_media")
 NEW = {"image4.png": os.path.join(P, "схема_постановка.png"), "image19.png": os.path.join(P, "схема_результат.png"),
        "image10.png": os.path.join(FBD, "fig7_fbd_v24.png"), "image17.png": os.path.join(FBD, "fig13_fbd_v24.png"),
-       "image13.png": os.path.join(M, "image13_кружки.png"), "image14.png": os.path.join(M, "image14_кружки.png")}
+       "image13.png": os.path.join(M, "image13_кружки.png"), "image14.png": os.path.join(M, "image14_кружки.png"),
+       # рис. 19–22: скрины APM без шкалы SVM, max/min под каждым (Корнеев 23:22; fem_pairs.py)
+       **{f"image{n}.png": os.path.join(M, f"image{n}_мкэ.png") for n in (22, 23, 24, 25)}}
 NS = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main",
       "wp": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
       "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
@@ -36,11 +38,14 @@ for blip in body.iter(f"{{{NS['a']}}}blip"):
     inline = next(a for a in blip.iterancestors() if a.tag in (f"{{{NS['wp']}}}inline", f"{{{NS['wp']}}}anchor"))
     ext = inline.find("wp:extent", NS)
     cx, cy = int(ext.get("cx")), int(ext.get("cy"))
-    if abs(cx / cy - w / h) > 0.01:                      # другие пропорции — сохраняем высоту, меняем ширину
-        cx = int(cy * w / h)
-        ext.set("cx", str(cx))
+    if abs(cx / cy - w / h) > 0.01:                      # другие пропорции: уже — сохраняем высоту, шире — ширину
+        if w / h < cx / cy:
+            cx = int(cy * w / h)
+        else:
+            cy = int(cx * h / w)
+        ext.set("cx", str(cx)); ext.set("cy", str(cy))
         for e in inline.iter(f"{{{NS['a']}}}ext"):
-            if e.get("cx"): e.set("cx", str(cx))
+            if e.get("cx"): e.set("cx", str(cx)); e.set("cy", str(cy))
     print(f"  {name} ← {os.path.basename(NEW[name])} ({w}×{h})")
 
 # табл. 19: σ_{vM,max} → σ_{экв}
