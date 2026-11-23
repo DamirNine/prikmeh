@@ -10,7 +10,8 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 APM = os.path.join(HERE, "..", "..", "2026-11-16", "apm", "_для_отчёта")
 NAMES = ["кулиса_2_тест", "кулиса_4_тест_новой_2", "ползун_2_тест", "ползун_4_тест_нового", "камень_2_тест",
-         "камень_4_тест_итог", "направляющая_2_тест", "направляющая_6_тест_с_винтом"]
+         "камень_4_тест_итог", "направляющая_2_тест", "направляющая_6_тест_с_винтом", "направляющая_Б_тест"]
+SRC = {"направляющая_Б_тест": os.path.join(HERE, "..", "apm", "со шкалой")}   # вариант Б (Корнеев 23:43: «после» — она)
 
 
 def legend_bar(a):
@@ -29,7 +30,7 @@ def legend_bar(a):
 
 
 for n in NAMES:
-    im = Image.open(os.path.join(APM, n + ".png")).convert("RGB")
+    im = Image.open(os.path.join(SRC.get(n, APM), n + ".png")).convert("RGB")
     a = np.asarray(im).astype(int).copy(); H, W, _ = a.shape
     x, y0, y1 = legend_bar(a)
     lx0, ly0, ly1 = max(x - 25, 0), max(y0 - 120, 0), min(y1 + 30, H)

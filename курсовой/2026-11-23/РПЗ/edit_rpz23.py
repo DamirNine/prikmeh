@@ -59,6 +59,22 @@ for t in body.iter(f"{{{NS['m']}}}t"):
             sub.remove(r)
         print("  табл. 19: σэкв")
 # п. 3.1 без изменений: подпись пары C со схемы убрана (Корнеев 23:20)
+# ---- направляющая «после» = вариант Б (Корнеев 23:43): σэкв 920 → 60,7 МПа, масса 402,3 → 389,9 г
+cap = next(q for q in d.paragraphs if q.text.startswith("Рисунок 22 — Направляющая"))
+maths = cap._p.findall(".//m:oMath", NS)
+for t in maths[0].iter(f"{{{NS['m']}}}t"):
+    if t.text == "136,2": t.text = "60,7"
+for m_ in maths[1:]: m_.getparent().remove(m_) if m_.getparent().tag != f"{{{NS['m']}}}oMathPara" else None
+rs = cap.runs
+rs[1].text = " МПа; полка с отверстием под шток, без планок"
+for r in rs[2:]: r._r.getparent().remove(r._r)
+tbl = next(t for t in d.tables if t.rows[0].cells[0].text == "Деталь" and "Масса" in t.rows[0].cells[-1].text)
+row = next(r for r in tbl.rows if r.cells[0].text == "Направляющая")
+for t in row._tr.iter(f"{{{NS['m']}}}t"):
+    if t.text == "136,2": t.text = "60,7"
+    if t.text == "597,2": t.text = "389,9"
+print("  направляющая: вариант Б —", cap.text, "|", [c.text for c in row.cells])
+
 # ---- п. 3.2: векторный контур O → B → D + новый рисунок 3 (Корнеев 23.11 23:36); дальнейшие рисунки +1
 import re, copy
 from docx.text.paragraph import Paragraph
