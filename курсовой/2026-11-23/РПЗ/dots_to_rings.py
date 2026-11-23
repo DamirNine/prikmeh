@@ -26,11 +26,12 @@ panels = {}
 for p in keep:
     cy, cx = p.mean(axis=0)
     panels.setdefault((cx < W / 2, cy < H / 2), []).append((cy, cx))
-extra = []
+extra = []; skip = []
 for pts in panels.values():
     O, K = np.array(max(pts)), np.array(min(pts))            # O — нижняя, K — верхняя точка панели
     D = O + ratio * (K - O)
     extra.append(np.array([D - 3, D + 3]))
+    skip.append(K)                                           # K — не шарнир: остаётся чёрной точкой (Корнеев 23.11 22:58)
 blobs += extra
 d = ImageDraw.Draw(im); found = []
 for p in blobs:
@@ -38,6 +39,7 @@ for p in blobs:
     if h > 20 or w > 20 or h < 5 or w < 5 or abs(h - w) > 4:      # остаток точки после эрозии маленький и круглый; буквы/линии — нет
         continue
     cy, cx = p.mean(axis=0)
+    if any(abs(cy - k[0]) < 3 and abs(cx - k[1]) < 3 for k in skip): continue
     r = (max(h, w) + 12) / 2 + 5
     d.ellipse([cx - r, cy - r, cx + r, cy + r], fill="white", outline=(23, 33, 46), width=5)
     found.append((int(cx), int(cy), int(h), int(w)))

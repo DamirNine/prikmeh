@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """РПЗ 23.11 (замечания преподавателя через Корнеева):
   рис. 2, 16 — новые кинематические схемы (образец, повёрнутый на 90°; пары O¹⁰₁В, C¹²₁П, D²³₁В) — Презентация/make_schemes_v2.py;
-  рис. 8, 14 — схемы звеньев с белыми кружками вместо чёрных точек (fbd/fig7, fig13_fbd_v23.png);
+  рис. 8, 14 — схемы звеньев с белыми кружками вместо чёрных точек (fbd/fig7, fig13_fbd_v24.png);
   рис. 11, 12 — эпюры: точки O, D, K белыми кружками (dots_to_rings.py);
   табл. 19 — σэкв вместо σvM,max; п. 3.1 — пара C (1–2).
     python edit_rpz23.py   (вход РПЗ_укупориватель_исходный.docx → РПЗ_укупориватель.docx)"""
@@ -14,7 +14,7 @@ P = os.path.join(HERE, "..", "Презентация", "fig")
 FBD = os.path.join(HERE, "..", "fbd")
 M = os.path.join(HERE, "_media")
 NEW = {"image4.png": os.path.join(P, "схема_постановка.png"), "image19.png": os.path.join(P, "схема_результат.png"),
-       "image10.png": os.path.join(FBD, "fig7_fbd_v23.png"), "image17.png": os.path.join(FBD, "fig13_fbd_v23.png"),
+       "image10.png": os.path.join(FBD, "fig7_fbd_v24.png"), "image17.png": os.path.join(FBD, "fig13_fbd_v24.png"),
        "image13.png": os.path.join(M, "image13_кружки.png"), "image14.png": os.path.join(M, "image14_кружки.png")}
 NS = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main",
       "wp": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",

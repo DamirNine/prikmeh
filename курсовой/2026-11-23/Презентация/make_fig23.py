@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Рисунки 23.11 по комментариям Корнеева к презентации:
-  звено1/2/3_v23.png       — расчётные схемы звеньев из fbd/fig7_fbd_v23.png (точки — белые кружки);
-  схемы_уточняющий_v23.png — fbd/fig13_fbd_v23.png целиком (обрезка полей);
+  звено1/2/3_v23.png       — расчётные схемы звеньев из fbd/fig7_fbd_v24.png (точки — белые кружки);
+  схемы_уточняющий_v23.png — fbd/fig13_fbd_v24.png целиком (обрезка полей);
   сечения_v23.png          — принятые сечения: размеры с выносными линиями (ГОСТ 2.307-2011), не «в воздухе»;
   ф_кулиса_сечение.png     — критерии для опасного сечения кулисы (изгиб со сжатием, срез по Журавскому);
   ф_проверки.png           — формулы: устойчивость штока (Эйлер / Ясинский), срез оси и пальца, смятие отверстий;
@@ -36,7 +36,7 @@ def trim_save(fig, name, pad=12):
 
 def links():
     """звенья 1, 2, 3 из fig7_fbd_v23: звено 1 слева, звенья 2 и 3 — справа друг над другом (как links() в make_figs.py)"""
-    im = Image.open(os.path.join(FBD, "fig7_fbd_v23.png")).convert("RGB")
+    im = Image.open(os.path.join(FBD, "fig7_fbd_v24.png")).convert("RGB")
     W, H = im.size
     g = np.asarray(im.convert("L")) < 235
     cols = g.any(axis=0)
@@ -55,7 +55,7 @@ def links():
     for name, box in (("звено1_v23.png", (0, 0, xc, H)), ("звено2_v23.png", (xc, 0, W, yc)), ("звено3_v23.png", (xc, yc, W, H))):
         c = trim(im.crop(box), 12)
         c.save(os.path.join(FIG, name)); print(f"  {name}: {c.size}")
-    r = trim(Image.open(os.path.join(FBD, "fig13_fbd_v23.png")).convert("RGB"))
+    r = trim(Image.open(os.path.join(FBD, "fig13_fbd_v24.png")).convert("RGB"))
     r.save(os.path.join(FIG, "схемы_уточняющий_v23.png")); print(f"  схемы_уточняющий_v23.png: {r.size}")
 
 
