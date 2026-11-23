@@ -4,7 +4,8 @@
   рис. 8, 14 — схемы звеньев с белыми кружками вместо чёрных точек (fbd/fig7, fig13_fbd_v24.png);
   рис. 11, 12 — эпюры: точки O, D, K белыми кружками (dots_to_rings.py);
   табл. 19 — σэкв вместо σvM,max; рис. 19–22 — скрины МКЭ без шкалы SVM, max/min под каждым;
-  п. 3.2 — контур O → B → D и новый рис. 3 (вектор_контур.png), последующие рисунки и ссылки +1.
+  п. 3.2 — контур O → B → D и новый рис. 3 (вектор_контур.png), последующие рисунки и ссылки +2;
+  п. 5.1 — новый рис. 4 (схема_синтез.png, треугольник O–Bн–Bк и ψ).
     python edit_rpz23.py   (вход РПЗ_укупориватель_исходный.docx → РПЗ_укупориватель.docx)"""
 import os
 from docx import Document
@@ -80,20 +81,21 @@ import re, copy
 from docx.text.paragraph import Paragraph
 from docx.shared import Cm
 paras = d.paragraphs
+SHIFT = 2                                   # новые рис. 3 (контур) и рис. 4 (синтез)
 # 1) перенумерация: подписи «Рисунок N …» и ссылки «рисунок/рисунке/рисунках N [и M]», N ≥ 3
 cap_re = re.compile(r"^(Рисунок )(\d+)")
 ref_re = re.compile(r"(рисун\w*\s+)(\d+)((?:\s*(?:и|,)\s*)(\d+))?")
 def bump(m):
-    n = int(m.group(2)); out = m.group(1) + str(n + 1 if n >= 3 else n)
+    n = int(m.group(2)); out = m.group(1) + str(n + SHIFT if n >= 3 else n)
     if m.group(3):
-        k = int(m.group(4)); out += m.group(3)[:len(m.group(3)) - len(m.group(4))] + str(k + 1 if k >= 3 else k)
+        k = int(m.group(4)); out += m.group(3)[:len(m.group(3)) - len(m.group(4))] + str(k + SHIFT if k >= 3 else k)
     return out
 nb = 0
 for para in paras:
     for ri, r in enumerate(para.runs):
         t = r.text
         if para.text.startswith("Рисунок") and ri == 0:
-            t = cap_re.sub(lambda m: m.group(1) + str(int(m.group(2)) + 1 if int(m.group(2)) >= 3 else int(m.group(2))), t)
+            t = cap_re.sub(lambda m: m.group(1) + str(int(m.group(2)) + SHIFT if int(m.group(2)) >= 3 else int(m.group(2))), t)
         t = ref_re.sub(bump, t)
         if t != r.text:
             r.text = t; nb += 1
@@ -123,5 +125,26 @@ cp = Paragraph(cap_el, paras[i33]._parent)
 for r in cp.runs[1:]: r._r.getparent().remove(r._r)
 cp.runs[0].text = "Рисунок 3 — Векторный контур O → B → D (B — проекция D на ось x)"
 print("  рисунок 3 вставлен")
+# ---- п. 5.1: рисунок 4 — схема с крайними положениями, треугольник O–Bн–Bк и угол ψ (Корнеев 00:02: «и в РПЗ сразу»)
+paras = d.paragraphs
+i51 = next(i for i, q in enumerate(paras) if q.text.startswith("Минимизируется площадь треугольника"))
+r51 = paras[i51].runs
+k = next(j for j, r in enumerate(r51) if r.text.startswith(". При заданном ходе"))
+r51[k].text = " (рисунок 4)" + r51[k].text
+i52 = next(i for i, q in enumerate(paras) if q.text.startswith("5.2. Ограничения"))
+pic_el = copy.deepcopy(fig_src._p)
+for ch in list(pic_el):
+    if not ch.tag.endswith("}pPr"): pic_el.remove(ch)
+cap_el = copy.deepcopy(cap_src._p)
+paras[i52]._p.addprevious(pic_el); paras[i52]._p.addprevious(cap_el)
+Paragraph(pic_el, paras[i52]._parent).add_run().add_picture(os.path.join(P, "схема_синтез.png"), width=Cm(9.5))
+cp = Paragraph(cap_el, paras[i52]._parent)
+for r in cp.runs[1:]: r._r.getparent().remove(r._r)
+base = cp.runs[0]; base.text = "Рисунок 4 — Треугольник O–B"
+for txt, sub in (("н", True), ("–B", False), ("к", True), (" и угловой ход ψ на кинематической схеме", False)):
+    el = copy.deepcopy(base._r); cp._p.append(el)
+    rn = Run(el, cp); rn.text = txt; rn.font.subscript = sub or None
+print("  рисунок 4 (синтез) вставлен")
+
 d.save(os.path.join(HERE, "РПЗ_укупориватель.docx"))
 print("сохранено")
