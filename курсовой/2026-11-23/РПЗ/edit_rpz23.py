@@ -3,7 +3,7 @@
   рис. 2, 16 — новые кинематические схемы (образец, повёрнутый на 90°; пары O¹⁰₁В, C¹²₁П, D²³₁В) — Презентация/make_schemes_v2.py;
   рис. 8, 14 — схемы звеньев с белыми кружками вместо чёрных точек (fbd/fig7, fig13_fbd_v24.png);
   рис. 11, 12 — эпюры: точки O, D, K белыми кружками (dots_to_rings.py);
-  табл. 19 — σэкв вместо σvM,max; п. 3.1 — пара C (1–2).
+  табл. 19 — σэкв вместо σvM,max.
     python edit_rpz23.py   (вход РПЗ_укупориватель_исходный.docx → РПЗ_укупориватель.docx)"""
 import os
 from docx import Document
@@ -52,11 +52,6 @@ for t in body.iter(f"{{{NS['m']}}}t"):
         for r in rs[1:]:
             sub.remove(r)
         print("  табл. 19: σэкв")
-# п. 3.1: пара C (1–2)
-for p in d.paragraphs:
-    if p.text.startswith("Кинематические пары: O (0–1)"):
-        for r in p.runs:
-            if "1–2 и 3–0" in r.text:
-                r.text = r.text.replace("1–2 и 3–0", "C (1–2) и 3–0"); print("  п. 3.1: C (1–2)")
+# п. 3.1 без изменений: подпись пары C со схемы убрана (Корнеев 23:20)
 d.save(os.path.join(HERE, "РПЗ_укупориватель.docx"))
 print("сохранено")
