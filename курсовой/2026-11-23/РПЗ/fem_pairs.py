@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FIG = os.path.join(HERE, "..", "Презентация", "fig")
 PAIRS = {22: (("кулиса_2_тест", "92,62", "0,0039"), ("кулиса_4_тест_новой_2", "92,58", "0,0034")),
          23: (("ползун_2_тест", "95,88", "0,031"), ("ползун_4_тест_нового", "49,01", "0,031")),
-         24: (("камень_2_тест", "646", "0,0028"), ("камень_4_тест_итог", "100,1", "0,0088")),
+         24: (("камень_2_тест", "646", "0,0028"), ("камень_после_корнеев", None, None)),
          25: (("направляющая_2_тест", "920", "0"), ("направляющая_6_тест_с_винтом", "136,2", "0"))}
 W, H, CAP = 2000, 880, 130
 f1 = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", 34)
@@ -36,7 +36,8 @@ for n, pair in PAIRS.items():
         y0 = 10 + (bh - im.height) // 2
         out.paste(im, (x0, y0))
         cx = k * W // 2 + W // 4
-        for j, t in enumerate(("до доработки" if k == 0 else "после доработки", f"max {mx} МПа, min {mn} МПа")):
+        lines = ("до доработки" if k == 0 else "после доработки",) + ((f"max {mx} МПа, min {mn} МПа",) if mx else ())
+        for j, t in enumerate(lines):
             tw = d.textlength(t, font=f1)
             d.text((cx - tw / 2, H - CAP + 10 + j * 50), t, fill="black", font=f1)
     out.save(os.path.join(HERE, "_media", f"image{n}_мкэ.png")); print(n)
