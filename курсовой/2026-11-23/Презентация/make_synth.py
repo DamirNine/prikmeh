@@ -158,9 +158,12 @@ def scheme(values, name, synth=False):
         ax.text(1.95 * cos(am), 1.95 * sin(am), r"$\psi$", fontsize=24, color=HL, ha="center", va="center", zorder=9)
         ax.text(*(Bn + np.array([0.72, 0.38])), r"$\mathbf{B}_{\mathbf{н}}$", fontsize=21, color=HL, ha="left", va="center")
         ax.text(*(Bk + np.array([0.62, -0.62])), r"$\mathbf{B}_{\mathbf{к}}$", fontsize=21, color=HL, ha="left", va="center")
-        ax.text(4.0, -0.95, r"$A_{OB_{\mathrm{н}}B_{\mathrm{к}}} = \frac{1}{2}\,e\,S \rightarrow \min$", fontsize=21,
+        # 24.11 Корнеев: формула хода S — на картинку (белая рамка в постановке задачи убрана)
+        ax.text(4.0, -0.95, r"$S = e\,(\mathrm{tg}\,\varphi_{\mathrm{н}} - \mathrm{tg}\,\varphi_{\mathrm{к}})$", fontsize=21,
                 color=HL, ha="left", va="center")
-        ax.text(4.0, -1.85, r"$\psi = \varphi_{\mathrm{н}} - \varphi_{\mathrm{к}} \rightarrow \min$", fontsize=21, color=HL, ha="left",
+        ax.text(4.0, -1.95, r"$A_{OB_{\mathrm{н}}B_{\mathrm{к}}} = \frac{1}{2}\,e\,S \rightarrow \min$", fontsize=21,
+                color=HL, ha="left", va="center")
+        ax.text(4.0, -2.95, r"$\psi = \varphi_{\mathrm{н}} - \varphi_{\mathrm{к}} \rightarrow \min$", fontsize=21, color=HL, ha="left",
                 va="center")
     if values:
         for ph, ln, lab, val in ((PH_N, 1.0, r"\varphi_{\mathrm{н}}", PH_N), (PH_K, 0.8, r"\varphi_{\mathrm{к}}", PH_K)):
