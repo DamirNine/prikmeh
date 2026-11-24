@@ -61,20 +61,27 @@ for t in body.iter(f"{{{NS['m']}}}t"):
         print("  табл. 19: σэкв")
 # п. 3.1 без изменений: подпись пары C со схемы убрана (Корнеев 23:20)
 # ---- направляющая «после» = вариант Б (Корнеев 23:43): σэкв 920 → 60,7 МПа, масса 402,3 → 389,9 г
-cap = next(q for q in d.paragraphs if q.text.startswith("Рисунок 22 — Направляющая"))
-maths = cap._p.findall(".//m:oMath", NS)
-for t in maths[0].iter(f"{{{NS['m']}}}t"):
-    if t.text == "136,2": t.text = "60,7"
-for m_ in maths[1:]: m_.getparent().remove(m_) if m_.getparent().tag != f"{{{NS['m']}}}oMathPara" else None
-rs = cap.runs
-rs[1].text = " МПа; полка с отверстием под шток, без планок"
-for r in rs[2:]: r._r.getparent().remove(r._r)
-tbl = next(t for t in d.tables if t.rows[0].cells[0].text == "Деталь" and "Масса" in t.rows[0].cells[-1].text)
-row = next(r for r in tbl.rows if r.cells[0].text == "Направляющая")
-for t in row._tr.iter(f"{{{NS['m']}}}t"):
-    if t.text == "136,2": t.text = "60,7"
-    if t.text == "597,2": t.text = "389,9"
-print("  направляющая: вариант Б —", cap.text, "|", [c.text for c in row.cells])
+if os.environ.get("UKP_VAR", "B") == "B":
+    cap = next(q for q in d.paragraphs if q.text.startswith("Рисунок 22 — Направляющая"))
+    maths = cap._p.findall(".//m:oMath", NS)
+    for t in maths[0].iter(f"{{{NS['m']}}}t"):
+        if t.text == "136,2": t.text = "60,7"
+    for m_ in maths[1:]: m_.getparent().remove(m_) if m_.getparent().tag != f"{{{NS['m']}}}oMathPara" else None
+    rs = cap.runs
+    rs[1].text = " МПа; полка с отверстием под шток, без планок"
+    for r in rs[2:]: r._r.getparent().remove(r._r)
+    tbl = next(t for t in d.tables if t.rows[0].cells[0].text == "Деталь" and "Масса" in t.rows[0].cells[-1].text)
+    row = next(r for r in tbl.rows if r.cells[0].text == "Направляющая")
+    for t in row._tr.iter(f"{{{NS['m']}}}t"):
+        if t.text == "136,2": t.text = "60,7"
+        if t.text == "597,2": t.text = "389,9"
+    print("  направляющая: вариант Б —", cap.text, "|", [c.text for c in row.cells])
+    for q in d.paragraphs:                       # текст под вариант Б (Корнеев 24.11 12:12)
+        for r in q.runs:
+            for old, new in ((" и направляющей (136,2 МПа) по МКЭ выше допускаемых для Ст3сп;", " по МКЭ выше допускаемых для Ст3сп (в направляющей — 60,7 МПа);"),
+                             ("направляющая — отдельная деталь в выемке стойки, закреплена установочным винтом М10;",
+                              "направляющая — отдельная деталь в выемке стойки, закреплена установочным винтом М10; шток ползуна проходит в отверстие Ø8,6 её полки;")):
+                if old in r.text: r.text = r.text.replace(old, new); print("  Б:", new[:60])
 
 # ---- п. 3.2: формулы контура в векторном виде, y_D (Корнеев 00:14)
 import sys; sys.path.insert(0, HERE)
@@ -160,10 +167,11 @@ for el in _empty:
     el.getparent().remove(el)
 print("  пустых индексов в формулах удалено:", len(_empty))
 
+PAGES = os.environ.get("UKP_PAGES", "50")
 # 24.11: объём в задании — после вставки формул п. 6.3 (rpz_kin_insert.py) 50 листов; презентация — 15 слайдов
 for p in d.paragraphs:
     for r in p.runs:
-        for a, b in (("48 листах", "50 листах"), ("49 листах", "50 листах"), ("на 13 слайдов", "на 15 слайдов")):
+        for a, b in (("48 листах", PAGES + " листах"), ("49 листах", PAGES + " листах"), ("на 13 слайдов", "на 15 слайдов")):
             if a in r.text:
                 r.text = r.text.replace(a, b); print("  задание:", b)
 
