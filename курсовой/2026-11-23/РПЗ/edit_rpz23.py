@@ -20,6 +20,8 @@ NEW = {"image4.png": os.path.join(P, "схема_постановка.png"), "im
        "image13.png": os.path.join(M, "image13_кружки.png"), "image14.png": os.path.join(M, "image14_кружки.png"),
        # рис. 19–22: скрины APM без шкалы SVM, max/min под каждым (Корнеев 23:22; fem_pairs.py)
        **{f"image{n}.png": os.path.join(M, f"image{n}_мкэ.png") for n in (22, 23, 24, 25)}}
+if os.environ.get("UKP_VAR", "B") == "B":
+    NEW["image20.png"] = os.path.join(M, "image20_Б.png")      # рис. 19: направляющая без планок (fig19_b.py)
 NS = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main",
       "wp": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
       "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
@@ -167,6 +169,9 @@ for el in _empty:
     el.getparent().remove(el)
 print("  пустых индексов в формулах удалено:", len(_empty))
 
+_x = [q for q in d.paragraphs if q.text.startswith("Пересечения тел проверены")]      # Корнеев 24.11 12:39 — убрать
+assert len(_x) == 1
+_x[0]._p.getparent().remove(_x[0]._p)
 # Заключение по задачам (Корнеев 24.11 12:24; «исправляй и в РПЗ сразу»): добавлены пункты, которых не было
 _z = next(i for i, q in enumerate(d.paragraphs) if q.text.strip() == "Заключение" and i > 100)
 _b = [q for q in d.paragraphs[_z + 1:_z + 6]]
