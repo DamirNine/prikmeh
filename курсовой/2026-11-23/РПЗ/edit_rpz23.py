@@ -167,6 +167,19 @@ for el in _empty:
     el.getparent().remove(el)
 print("  пустых индексов в формулах удалено:", len(_empty))
 
+# Заключение по задачам (Корнеев 24.11 12:24; «исправляй и в РПЗ сразу»): добавлены пункты, которых не было
+_z = next(i for i, q in enumerate(d.paragraphs) if q.text.strip() == "Заключение" and i > 100)
+_b = [q for q in d.paragraphs[_z + 1:_z + 6]]
+def _bullet(after, text):
+    el = copy.deepcopy(_b[-1]._p); after._p.addnext(el); q = Paragraph(el, after._parent)
+    for r in q.runs[1:]: r._r.getparent().remove(r._r)
+    q.runs[0].text = text; return q
+assert _b[-1].text.startswith("– Построены 3D-модели"), _b[-1].text
+_bullet(_b[0], "– Сформулированы техническое задание, ограничения и критерии синтеза: сила руки не более 120 Н, рукоять не более 500 мм, "
+               "минимум площади треугольника крайних положений и углового хода.")
+_bullet(_b[-1], "– Детали напечатаны (FDM), прототип собран.")
+print("  заключение: +2 пункта")
+
 PAGES = os.environ.get("UKP_PAGES", "50")
 # 24.11: объём в задании — после вставки формул п. 6.3 (rpz_kin_insert.py) 50 листов; презентация — 15 слайдов
 for p in d.paragraphs:
