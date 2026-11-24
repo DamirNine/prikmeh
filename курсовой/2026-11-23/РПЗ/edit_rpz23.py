@@ -21,6 +21,7 @@ NEW = {"image4.png": os.path.join(P, "схема_постановка.png"), "im
        # рис. 19–22: скрины APM без шкалы SVM, max/min под каждым (Корнеев 23:22; fem_pairs.py)
        **{f"image{n}.png": os.path.join(M, f"image{n}_мкэ.png") for n in (22, 23, 24, 25)}}
 if os.environ.get("UKP_VAR", "B") == "B":
+    NEW["image21.png"] = os.path.join(M, "image21_Б.png")      # рис. 20: сборка без планок (fig20_b.py)
     NEW["image20.png"] = os.path.join(M, "image20_Б.png")      # рис. 19: направляющая без планок (fig19_b.py)
 NS = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main",
       "wp": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
